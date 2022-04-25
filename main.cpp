@@ -24,23 +24,26 @@ RawSerial       pc(USBTX, USBRX);
 InterruptIn     btn(USER_BUTTON);
 Timer           mainTimer;
 Timer           perfTimer;
+AnalogIn        debug_A0 ( A0 );
 
-
-static int             dataPtr;
+static char            debugBuf[BUF_SIZE];
+static char            debugLine[80];
+static uint16_t        dataPtr;
 static char            dataBuf[BUF_SIZE];
+
 
 static bool            ctrl_char;
 static char            t;
 static char            c;
 
-static int             code_transfer_step;
-static int             device_code;
-static int             wait_data_function;
+static uint8_t             code_transfer_step;
+static uint8_t             device_code;
+static uint32_t            wait_data_function;
 static bool            halfdata ;
 static bool            halfdata_out ;
-static int             run_oldstate;
-static int             lastRunState;
-static int             lastState;
+static uint32_t             run_oldstate;
+static uint32_t             lastRunState;
+static uint32_t             lastState;
 static uint8_t         ce140f_Mode;
 static bool            Previous_PIN_BUSY;
 static bool            Previous_PIN_MT_OUT1;
@@ -48,14 +51,11 @@ static bool            Previous_PIN_D_OUT;
 static uint32_t        perfTime;
 static uint32_t        perfNrCalls;
 
-volatile bool          D_OUT_Up;
-
-
 // Sharp 11-pin connector positions
 //********************************************************/
 // PIN_MT_OUT2  1
-// PIN_GND      2
-// PIN_VGG      3
+// PIN_VGG      2
+// PIN_GND      3
 // PIN_BUSY     4
 // PIN_D_OUT    5
 // PIN_MT_IN    6 // also X_IN
@@ -82,6 +82,7 @@ void btnRaised()
 {
     pc.printf ("Tot time (us) %d\n\r", perfTime );
     pc.printf ("nr calls %d\n\r", perfNrCalls);
+    pc.printf ("%s\n\r", debugBuf);
 }
 
 int main()
@@ -104,64 +105,60 @@ int main()
     while ( true ) {
         perfTimer.reset();
         perfTimer.start();
-        ret = Cce140f_run();
+        ret = Cce140f_run(); // about 90 us ~ 10 samples / ms
         perfTime += perfTimer.read_us();
         perfNrCalls += 1;
-        wait_us (100); // about 10 samples per ms
+        // wait_us (100); Cce140f_run takes long enough already
     }
     
 }
 
+// Assign each Nucleo pin as input
+bool get_MT_OUT2  ( void ) { DigitalIn  in_MT_OUT2 (D3);   return in_MT_OUT2 ; }
+bool get_BUSY     ( void ) { DigitalIn  in_BUSY    (D4);   return in_BUSY    ; }
+bool get_D_OUT    ( void ) { DigitalIn  in_D_OUT   (D5);   return in_D_OUT   ; }
+bool get_MT_IN    ( void ) { DigitalIn  in_MT_IN   (D6);   return in_MT_IN   ; }
+bool get_MT_OUT1  ( void ) { DigitalIn  in_MT_OUT1 (D7);   return in_MT_OUT1 ; }
+bool get_D_IN     ( void ) { DigitalIn  in_D_IN    (D8);   return in_D_IN    ; }
+bool get_ACK      ( void ) { DigitalIn  in_ACK     (D9);   return in_ACK     ; }
+bool get_SEL2     ( void ) { DigitalIn  in_SEL2    (D10);  return in_SEL2    ; }
+bool get_SEL1     ( void ) { DigitalIn  in_SEL1    (D11);  return in_SEL1    ; }
+
 void Get_Connector (void)
 {
-    
-    // Assign Nucleo pins as inputs
-    DigitalIn  in_MT_OUT2 (D3);
-    DigitalIn  in_BUSY    (D4);
-    DigitalIn  in_D_OUT   (D5);
-    DigitalIn  in_MT_IN   (D6);
-    DigitalIn  in_MT_OUT1 (D7);
-    DigitalIn  in_D_IN    (D8);
-    DigitalIn  in_ACK     (D9); 
-    DigitalIn  in_SEL2    (D10);
-    DigitalIn  in_SEL1    (D11);
-    // get values
-    MT_OUT2 = in_MT_OUT2;
-    BUSY    = in_BUSY;
-    D_OUT   = in_D_OUT;
-    MT_IN   = in_MT_IN;
-    MT_OUT1 = in_MT_OUT1;
-    D_IN    = in_D_IN;
-    ACK     = in_ACK;
-    SEL2    = in_SEL2;
-    SEL1    = in_SEL1;
+   MT_OUT2 = get_MT_OUT2(); 
+   BUSY    = get_BUSY   (); 
+   D_OUT   = get_D_OUT  (); 
+   MT_IN   = get_MT_IN  (); 
+   MT_OUT1 = get_MT_OUT1(); 
+   D_IN    = get_D_IN   (); 
+   ACK     = get_ACK    (); 
+   SEL2    = get_SEL2   (); 
+   SEL1    = get_SEL1   ();
+} 
 
-}
+// Assign each Nucleo pins as output
+void set_MT_OUT2  ( bool value ) {  DigitalOut out_MT_OUT2 (D3);    out_MT_OUT2  = value ; }
+void set_BUSY     ( bool value ) {  DigitalOut out_BUSY    (D4);    out_BUSY     = value ; }
+void set_D_OUT    ( bool value ) {  DigitalOut out_D_OUT   (D5);    out_D_OUT    = value ; }
+void set_MT_IN    ( bool value ) {  DigitalOut out_MT_IN   (D6);    out_MT_IN    = value ; }
+void set_MT_OUT1  ( bool value ) {  DigitalOut out_MT_OUT1 (D7);    out_MT_OUT1  = value ; }
+void set_D_IN     ( bool value ) {  DigitalOut out_D_IN    (D8);    out_D_IN     = value ; }
+void set_ACK      ( bool value ) {  DigitalOut out_ACK     (D9);    out_ACK      = value ; }
+void set_SEL2     ( bool value ) {  DigitalOut out_SEL2    (D10);   out_SEL2     = value ; }
+void set_SEL1     ( bool value ) {  DigitalOut out_SEL1    (D11);   out_SEL1     = value ; }
 
 void Set_Connector (void)
-{
-    
-    // Assign Nucleo pins as outputs
-    DigitalOut out_MT_OUT2 (D3);
-    DigitalOut out_BUSY    (D4);
-    DigitalOut out_D_OUT   (D5);
-    DigitalOut out_MT_IN   (D6);
-    DigitalOut out_MT_OUT1 (D7);
-    DigitalOut out_D_IN    (D8);
-    DigitalOut out_ACK     (D9); 
-    DigitalOut out_SEL2    (D10);
-    DigitalOut out_SEL1    (D11);
-    // set values
-    out_MT_OUT2 = MT_OUT2;
-    out_BUSY    = BUSY;
-    out_D_OUT   = D_OUT;
-    out_MT_IN   = MT_IN;
-    out_MT_OUT1 = MT_OUT1;
-    out_D_IN    = D_IN;
-    out_ACK     = ACK;
-    out_SEL2    = SEL2;
-    out_SEL1    = SEL1;
-
+{  
+  set_MT_OUT2  ( MT_OUT2 );
+  set_BUSY     ( BUSY    );
+  set_D_OUT    ( D_OUT   );
+  set_MT_IN    ( MT_IN   );
+  set_MT_OUT1  ( MT_OUT1 );
+  set_D_IN     ( D_IN    );
+  set_ACK      ( ACK     );
+  set_SEL2     ( SEL2    );
+  set_SEL1     ( SEL1    );
 }
 
 bool Cce140f_init(void)
@@ -194,7 +191,7 @@ bool Cce140f_init(void)
     ACK     = false;
     SEL2    = false;
     SEL1    = false;
-    
+
     mainTimer.reset();
     mainTimer.start();
 
@@ -206,7 +203,7 @@ bool Cce140f_run(void)
 {
 
     // get signals from connector
-    Get_Connector();
+    //Get_Connector();
 
     bool bit = false;
     ce140f_Mode=RECEIVE_MODE;
@@ -219,64 +216,71 @@ bool Cce140f_run(void)
     }
 
     switch (code_transfer_step) {
-    case 0 :    if ((MT_OUT1 == UP) && (D_OUT==UP)) {
+    case 0 :    if ((get_MT_OUT1() == UP) && (get_D_OUT() == UP)) {
                     // Device Code protocol started with XOUT & DOUT up
+                    mainTimer.reset();
                     lastState = mainTimer.read_ms(); //time.restart();
                     code_transfer_step=1;
                 }
                 busyLed = 0;
                 break;
-    case 1 :    if ((MT_OUT1 == UP) && (D_OUT==UP)) {
+    case 1 :    if ((get_MT_OUT1() == UP) && (get_D_OUT() == UP)) {
                     if ((mainTimer.read_ms() - lastState) > 40) {
                         // XOUT & DOUT up for 40 ms: Device bit sending started 
                         // Raise ACK
                         code_transfer_step = 2;
-                        ACK = UP;
+                        set_ACK ( UP );
                         busyLed = 1; 
+                        sprintf(debugBuf, "1 - %d %d %d\n\r", mainTimer.read_us(), lastState, mainTimer.read_ms());
                     }
                 }
                 else {
                     code_transfer_step=0;
                 }
                 break;
-    case 2:     if ( BUSY == UP ){ // New bit available
-                    if( D_OUT == UP )
+    case 2:     if ( get_BUSY() == UP ){ // New bit available
+                    if( get_D_OUT() == UP )
                         bit = true;
                     else
                         bit = false;
+                    sprintf(debugLine, "2 - %d bit %d %d\n\r", mainTimer.read_us(), bit, debug_A0.read()); strcat ( debugBuf, debugLine );
                     t>>=1;
                     if (bit) t|=0x80;
                     if ((c=(++c)&7)==0)  {
+                        sprintf(debugLine, "2 - %d code %x\n\r", mainTimer.read_us(), t); strcat ( debugBuf, debugLine );
                         pc.printf(" device code: 0x%x\n\r", t);
                         device_code = t;
                         if (device_code==0x41) // This is for the CE-140F
                             code_transfer_step=4;
                         else {
-                            code_transfer_step = 0; // Not for us
+                            code_transfer_step = 0; // This is not for us
                             t=0; c=0;
                         }
-                    }
-                    else  
+                    } else  {
                         code_transfer_step=3;
-                    lastState=mainTimer.read_ms();
-                    ACK = DOWN; // bit received
+                        lastState=mainTimer.read_ms();
+                    }
+                    set_ACK ( DOWN ); // bit received
                 }
                 break;
     case 3:     if ((mainTimer.read_ms() - lastState) > 2) {
+                    sprintf(debugLine, "3 - %d\n\r", mainTimer.read_us()); strcat ( debugBuf, debugLine );
                     code_transfer_step=2;
-                    // wait 2 ms then raise again ACK
-                    ACK = UP;
+                    // wait 2 ms then raise again ACK - ready for next bit
+                    set_ACK ( UP );
                 }
                 break;
-    case 4:     if ((BUSY == DOWN)&&(MT_OUT1 == DOWN)) {
-                    ACK = UP;
+    case 4:     if ((get_BUSY() == DOWN)&&(get_MT_OUT1() == DOWN)) {
+                    sprintf(debugLine, "4 - %d\n\r", mainTimer.read_us()); strcat ( debugBuf, debugLine );
+                    set_ACK ( UP );
                     code_transfer_step=5;
                     lastState=mainTimer.read_ms(); //time.restart();
                     t=0; c=0;
                 }
                 break;
-    case 5:     if ((mainTimer.read_ms() - lastState)>9) {
-                    ACK = DOWN;
+    case 5:     if ((mainTimer.read_ms() - lastState) > 9) {
+                    sprintf(debugLine, "5 - %d\n\r", mainTimer.read_us()); strcat ( debugBuf, debugLine );
+                    set_ACK ( DOWN );
                     code_transfer_step=0;
                 }
                 break;
@@ -349,15 +353,14 @@ bool Cce140f_run(void)
 //            update();
         }
     }
-    
 */
-
+    
     Previous_PIN_BUSY = BUSY;
     Previous_PIN_MT_OUT1 = MT_OUT1;
     Previous_PIN_D_OUT = D_OUT;
 
     // send signals out
-    Set_Connector();
+    //Set_Connector();
     
     return true;
     
