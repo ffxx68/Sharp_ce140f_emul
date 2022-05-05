@@ -8,6 +8,16 @@ Since the Sharp PC uses a CMOS 5v logic, a bidirectional level shifter is placed
 
 Schematics like below:
 
-![image](https://user-images.githubusercontent.com/659557/165309696-1571d601-b5a6-4c15-a0b4-bf41b30a29c0.png)
+![sharp-ce140f-emul_v2](https://user-images.githubusercontent.com/659557/166906828-bb2f1655-d75b-4e67-a48d-da4b4babfbec.png)
 
-I'm presently struggling to get the board properly receive the Device Code, which is the first step of the communication protocol (0x4E in the case of adisk drive, when a FILES command for example is issued on the Sharp-PC). I'm always getting an 0xFF code instead (that is, DOUT is always high). The connection init sequence (X_OUT and DOUT both going high for at least 40 ms, as per CE-140F service manual) is correctly acknowledged, so PC-to-CE signals a re corectly issued. I have a doubt about the ACK return line...
+The level converter I used is one of this type: https://www.sparkfun.com/products/12009 (actually, one of the many clones).
+
+with each line being like
+
+![image](https://user-images.githubusercontent.com/659557/166907967-b0771314-bf71-4cde-9ebd-4cc6bff93868.png)
+
+After initially struggling to get the board properly receive the Device Code (I always got a 0xFF; 0x41 is expected in the case of a disk drive, when a FILES command for example is issued on the Sharp-PC), I left the level converted only on the ACK line, removing it from the BUSY, DOUT and XOUT lines. The level onverter kept a high value on inputs, in spite of pull-down resistors. Infact, the board is 5v-input tolerant, but its 3.3v output isn't enough to drive the 5v input on the PC. 
+
+With this setup, I managed to get the board receive a device code from the PC, except I get a 0xC1 code, in place of the 0x41 expected... But is that the expected value really?
+
+Issue now is that (apart from confirming the 0xC1 code is correct!) this configuration is fine while receving the device code, but when exchanging actual data, lines are bi-directional, so the level converter would be required on data lines too. Should I use different board pins for inputs and outputs and "merge" them externally? I hope there's a simpler approach.
