@@ -8,7 +8,7 @@ Since the Sharp PC uses a CMOS 5v logic, a bidirectional level shifter is placed
 
 Schematics like below:
 
-![sharp-ce140f-emul_v2](https://user-images.githubusercontent.com/659557/166906828-bb2f1655-d75b-4e67-a48d-da4b4babfbec.png)
+![sharp-ce140f-emul_v2](https://user-images.githubusercontent.com/659557/166918378-815e555b-2549-4b1c-9d16-7c1dcbc702a1.png)
 
 The level converter I used is one of this type: https://www.sparkfun.com/products/12009 (actually, one of the many clones).
 
