@@ -1,370 +1,275 @@
-/////////////////////////////////////////////////
-// Sharp CE-140F diskette emulator
-// Original got by email by
-// De : Fabio Fumi <ffumi68@gmail.com>
-// Envoyé : jeudi 7 avril 2022 14:50
-// À : contact@pockemul.com
-// Objet : Re: SL-16 documentation or info
-// - Adapted to MBed NUCLEO board
-/////////////////////////////////////////////////
 #include "mbed.h"
 
-// TODO: Finish to emulate missing disk functions
+#define BUF_SIZE 1024 // data depth
+#define DEBUG_SIZE 1024 // print debug buffer
+#define NIBBLE_DELAY_1 20 // us
+#define NIBBLE_DELAY_2 20 // us
+#define BIT_DELAY_1 100 // us
+#define BIT_DELAY_2 2000 // us
+#define ACK_DELAY 20000 // us
+#define ACK_TIMEOUT 1 // s
+#define DATA_WAIT 9000 // us
+#define IN_DATAREADY_TIMEOUT 50000 // ms
 
-#define DOWN    0
-#define UP      1
-#define BUF_SIZE 1024
+// input ports
+DigitalIn   in_BUSY   (D4);    
+InterruptIn irq_BUSY  (D4);    
+DigitalIn   in_D_OUT  (D5);    
+InterruptIn irq_DOUT  (D5);
+DigitalIn   in_X_OUT  (D7);     
+InterruptIn irq_X_OUT (D7);
+DigitalIn   in_D_IN   (D8);  
+DigitalIn   in_SEL_2   (D10);     
+DigitalIn   in_SEL_1   (D11);
+// output ports  
+DigitalOut        out_ACK   (D9);     
+// info led
+DigitalOut        infoLed   (LED1);
+// timers
+Timer             mainTimer;
+Timeout           ackOffTimeout;
+Timeout           inDataReadyTimeout;
+Ticker            outDataTicker;
 
-#define RECEIVE_MODE    1
-#define SEND_MODE       2
-#define TEST_MODE       3
 
-DigitalOut      busyLed(LED1);
-RawSerial       pc(USBTX, USBRX);
-InterruptIn     btn(USER_BUTTON);
-Timer           mainTimer;
-Timer           perfTimer;
-AnalogIn        debug_A0 ( A0 );
+// PC comms
+RawSerial         pc(USBTX, USBRX);
+InterruptIn       btn(USER_BUTTON);
 
-static char            debugBuf[BUF_SIZE];
-static char            debugLine[80];
-static uint16_t        dataPtr;
-static char            dataBuf[BUF_SIZE];
+volatile uint8_t  deviceCode;
+volatile uint8_t  bitCount;
+volatile char     debugBuf[DEBUG_SIZE];
+volatile char     debugLine[80];
+volatile bool     highNibble = false;
+volatile char     inDataBuf[BUF_SIZE];
+volatile char     outDataBuf[BUF_SIZE];
+volatile uint16_t inBufPosition;
+volatile uint16_t outBufPosition;
+volatile int checksum = 0;
 
+void debug_log(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    sprintf((char*)debugLine,format,args);
+    sprintf((char*)debugLine,"%d %s\n\r",mainTimer.read_us(),(char*)debugLine);
+    strcat((char*)debugBuf,(char*)debugLine);
+    va_end(args);
+}
 
-static bool            ctrl_char;
-static char            t;
-static char            c;
-
-static uint8_t             code_transfer_step;
-static uint8_t             device_code;
-static uint32_t            wait_data_function;
-static bool            halfdata ;
-static bool            halfdata_out ;
-static uint32_t             run_oldstate;
-static uint32_t             lastRunState;
-static uint32_t             lastState;
-static uint8_t         ce140f_Mode;
-static bool            Previous_PIN_BUSY;
-static bool            Previous_PIN_MT_OUT1;
-static bool            Previous_PIN_D_OUT;
-static uint32_t        perfTime;
-static uint32_t        perfNrCalls;
-
-// Sharp 11-pin connector positions
-//********************************************************/
-// PIN_MT_OUT2  1
-// PIN_VGG      2
-// PIN_GND      3
-// PIN_BUSY     4
-// PIN_D_OUT    5
-// PIN_MT_IN    6 // also X_IN
-// PIN_MT_OUT1  7 // also X_OUT
-// PIN_D_IN     8
-// PIN_ACK      9
-// PIN_SEL2     10
-// PIN_SEL1     11
-//********************************************************/
-bool MT_OUT2 = false;  
-bool BUSY    = false;  
-bool D_OUT   = false;  
-bool MT_IN   = false;
-bool MT_OUT1 = false;
-bool D_IN    = false;
-bool ACK     = false;
-bool SEL2    = false;
-bool SEL1    = false;
+// a "timeout" on ACK line 
+void  ackOff ( void ) {
     
-bool Cce140f_init(void);
-bool Cce140f_run(void);
+    out_ACK = 0; 
+    infoLed = 0;
+     
+}
+
+char CheckSum(char b) {
+    checksum = (checksum + b) & 0xff;
+    return b;
+}
+
+void outDataAppend(char b) {
+    outDataBuf[(outBufPosition++)%BUF_SIZE ] = b;
+}
+
+void sendString(char* s) {
+    for (int i=0;i<strlen(s);i++){
+        outDataAppend(CheckSum(s[i]));
+    }
+}
+
+void inDataReady ( void ) {
+    // Command processing here ...
+    sprintf ( (char*)debugLine, "%d Processing...\n\r", mainTimer.read_us()) ; strcat ((char*)debugBuf, (char*)debugLine) ;
+    if (  inBufPosition > 0 ) {
+        sprintf ( (char*)debugLine, "%d inBufPosition %d...\n\r", mainTimer.read_us(), inBufPosition) ; strcat ((char*)debugBuf, (char*)debugLine) ;
+
+        // Verify checksum
+        checksum=0;
+        for (int i =0;i<inBufPosition;i++) {
+            checksum = (inDataBuf[i]+checksum) & 0xff;
+        }   
+        debug_log ( "checksum %d vs %d" , checksum, inDataBuf[inBufPosition]); 
+        
+        // ....
+        debug_log ( "command 0x%02X" , inDataBuf[0]); 
+        checksum=0;
+        outBufPosition = 0;
+        
+        if ( inDataBuf[0] == 0x07 ) {
+            // case 0x07: process_FILES_LIST(1);break;
+            outDataAppend(0x00);
+            sendString("X:TEST    .BAS ");        
+            outDataAppend(checksum);
+            debug_log ( "dataout %d" , outBufPosition); 
+        }
+    }
+}
+
+void nibbleReady ( void ) {
+    
+    //pc.putc('n');
+    if ( out_ACK == 0 ) {
+        uint8_t dataByte;
+        wait_us ( NIBBLE_DELAY_1 );
+        if ( highNibble ) {
+            highNibble = false;
+            dataByte <<= 4;
+            dataByte |= in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3);
+            //pc.putc(dataByte);
+            inDataBuf [ (inBufPosition++)%BUF_SIZE ] = dataByte ; // circular storage for safety; may cut off data!
+            // Data processing starts after last byte (timeout reset at each byte received) 
+            inDataReadyTimeout.attach( &inDataReady, IN_DATAREADY_TIMEOUT );
+        } else {
+            dataByte = in_SEL_1 + (in_SEL_1<<1) + (in_D_OUT<<2) + (in_D_IN<<3);
+            //pc.putc(dataByte);
+            highNibble = true;
+        }
+        sprintf ( (char*)debugLine, "%d nibble %d 0x%02X\n\r", mainTimer.read_us(), highNibble, dataByte ); strcat ( (char*)debugBuf, (char*)debugLine) ;
+        out_ACK = 1;
+        infoLed = 1;
+        ackOffTimeout.attach( &ackOff, ACK_TIMEOUT ); // max time high ack
+    } else {
+        out_ACK = 0;
+    }
+}
+
+void nibbleAck ( void ) {
+    if ( out_ACK == 1 ) {
+        wait_us ( NIBBLE_DELAY_2 );
+        out_ACK = 0;
+        infoLed = 0;
+    }
+}
+
+
+// Serial bit receive
+void bitReady ( void ) {
+    uint32_t nTimeout;
+    
+    //pc.putc('b');
+    if ( out_ACK == 1 ) {
+        bool bit;
+        wait_us ( BIT_DELAY_1 );
+        
+        bit = in_D_OUT; // get bit value
+        //pc.putc(0x30+bit);pc.putc(' ');
+        sprintf ( (char*)debugLine, "%d bit %d: %d\n\r", mainTimer.read_us(), bitCount, bit ); strcat ( (char*)debugBuf, (char*)debugLine) ;
+        out_ACK = 0; // tell PC a bit has been received
+        infoLed = 0;
+        
+        deviceCode>>=1;
+        if (bit) deviceCode|=0x80;
+        if ((bitCount=(++bitCount)&7)==0) {
+            // 8 bits received
+            irq_BUSY.rise(NULL); // detach this IRQ
+            pc.printf(" Device 0x%02X\n\r",deviceCode);
+            sprintf ( (char*)debugLine, "%d device 0x%02X\n\r", mainTimer.read_us(), deviceCode ); strcat ((char*)debugBuf, (char*)debugLine) ;
+            if ( deviceCode == 0x41 ) {
+                // PC is asking for a CE140F (device code SHOULD be 0x41) - Here we are!
+                sprintf ( (char*)debugLine, "%d CE140F\n\r", mainTimer.read_us()); strcat ((char*)debugBuf, (char*)debugLine) ;
+                // ... start data handling ...
+                highNibble = false;
+                // wait for both BUSY and X_OUT to go down, before starting data receive
+                nTimeout = 10000; // timeout: 1s
+                while ( ( in_X_OUT || in_BUSY ) && (nTimeout--) ) {
+                    wait_us (100);
+                }
+                if (nTimeout) {
+                    sprintf ( (char*)debugLine, "%d Data...\n\r", mainTimer.read_us()) ; strcat ((char*)debugBuf, (char*)debugLine) ;
+                    out_ACK = 1;
+                    infoLed = 1;
+                    wait_us ( DATA_WAIT ); 
+                    highNibble = false;             
+                    out_ACK = 0; // ready for receiving new data
+                    infoLed = 0;
+                    inBufPosition = 0;
+                    irq_BUSY.rise(&nibbleReady); 
+                    irq_BUSY.fall(&nibbleAck);
+                } else {
+                    pc.putc('x');
+                    sprintf ( (char*)debugLine, "%d Timeout!\n\r", mainTimer.read_us()) ; strcat ((char*)debugBuf, (char*)debugLine) ;
+                }
+            } 
+        } else {
+            wait_us ( BIT_DELAY_2 );
+            out_ACK = 1; // ready for a new bit
+            infoLed = 1;
+            ackOffTimeout.attach( &ackOff, ACK_TIMEOUT ); // max time high ack
+        }
+    }
+    
+}
+
+
+
+void startDeviceCodeSeq ( void ) {
+    
+    wait_us (BIT_DELAY_1);
+    if ( in_D_OUT == 1 ) {
+        // Device Code transfer starts with both X_OUT and DOUT high
+        // (X_OUT high with DOUT low is for cassette write)
+        
+        infoLed = 1;
+        out_ACK = 1;
+        ackOffTimeout.attach( &ackOff, ACK_TIMEOUT ); // max time high ack
+        
+        bitCount = 0;
+        deviceCode = 0;
+        sprintf ( (char*)debugBuf, "Device\n\r" ); 
+
+        wait_us (ACK_DELAY) ;   //?? wait after eabling trigger?
+        // serial bit trigger
+        irq_BUSY.rise(&bitReady);
+        irq_BUSY.fall(NULL);
+        wait_us (ACK_DELAY) ;
+    
+    }
+}
+
 
 void btnRaised() 
 {
-    pc.printf ("Tot time (us) %d\n\r", perfTime );
-    pc.printf ("nr calls %d\n\r", perfNrCalls);
-    pc.printf ("%s\n\r", debugBuf);
+    uint8_t i = 20;
+    while (i--) { infoLed =! infoLed; wait_ms(20); }
+    // printout debug buffer
+    pc.printf ( "%s", (char*)debugBuf );
+    // reset status
+    out_ACK = 0;
+    infoLed = 0;
+    irq_BUSY.rise(NULL);
+    irq_BUSY.fall(NULL);
+    sprintf ( (char*)debugBuf, "Reset\n\r" ); 
 }
 
-int main()
-{
+int main(void) {
+    uint8_t i = 20;
 
-    busyLed  = 0;
-    ctrl_char = false;
-    dataPtr = 0;
-    bool ret ;
-    
     pc.baud ( 57600 ); 
+    pc.printf ( "CE140F emulator init\n\r" );
+    while (i--) { infoLed =! infoLed; wait_ms(20); }
     
-    perfNrCalls = 0;
-    perfTime = 0;
- 
     btn.rise(&btnRaised);
-   
-    Cce140f_init();
-    // main loop
-    while ( true ) {
-        perfTimer.reset();
-        perfTimer.start();
-        ret = Cce140f_run(); // about 90 us ~ 10 samples / ms
-        perfTime += perfTimer.read_us();
-        perfNrCalls += 1;
-        // wait_us (100); Cce140f_run takes long enough already
-    }
+    inBufPosition = 0;
     
-}
-
-// Assign each Nucleo pin as input
-bool get_MT_OUT2  ( void ) { DigitalIn  in_MT_OUT2 (D3);   return in_MT_OUT2 ; }
-bool get_BUSY     ( void ) { DigitalIn  in_BUSY    (D4);   return in_BUSY    ; }
-bool get_D_OUT    ( void ) { DigitalIn  in_D_OUT   (D5);   return in_D_OUT   ; }
-bool get_MT_IN    ( void ) { DigitalIn  in_MT_IN   (D6);   return in_MT_IN   ; }
-bool get_MT_OUT1  ( void ) { DigitalIn  in_MT_OUT1 (D7);   return in_MT_OUT1 ; }
-bool get_D_IN     ( void ) { DigitalIn  in_D_IN    (D8);   return in_D_IN    ; }
-bool get_ACK      ( void ) { DigitalIn  in_ACK     (D9);   return in_ACK     ; }
-bool get_SEL2     ( void ) { DigitalIn  in_SEL2    (D10);  return in_SEL2    ; }
-bool get_SEL1     ( void ) { DigitalIn  in_SEL1    (D11);  return in_SEL1    ; }
-
-void Get_Connector (void)
-{
-   MT_OUT2 = get_MT_OUT2(); 
-   BUSY    = get_BUSY   (); 
-   D_OUT   = get_D_OUT  (); 
-   MT_IN   = get_MT_IN  (); 
-   MT_OUT1 = get_MT_OUT1(); 
-   D_IN    = get_D_IN   (); 
-   ACK     = get_ACK    (); 
-   SEL2    = get_SEL2   (); 
-   SEL1    = get_SEL1   ();
-} 
-
-// Assign each Nucleo pins as output
-void set_MT_OUT2  ( bool value ) {  DigitalOut out_MT_OUT2 (D3);    out_MT_OUT2  = value ; }
-void set_BUSY     ( bool value ) {  DigitalOut out_BUSY    (D4);    out_BUSY     = value ; }
-void set_D_OUT    ( bool value ) {  DigitalOut out_D_OUT   (D5);    out_D_OUT    = value ; }
-void set_MT_IN    ( bool value ) {  DigitalOut out_MT_IN   (D6);    out_MT_IN    = value ; }
-void set_MT_OUT1  ( bool value ) {  DigitalOut out_MT_OUT1 (D7);    out_MT_OUT1  = value ; }
-void set_D_IN     ( bool value ) {  DigitalOut out_D_IN    (D8);    out_D_IN     = value ; }
-void set_ACK      ( bool value ) {  DigitalOut out_ACK     (D9);    out_ACK      = value ; }
-void set_SEL2     ( bool value ) {  DigitalOut out_SEL2    (D10);   out_SEL2     = value ; }
-void set_SEL1     ( bool value ) {  DigitalOut out_SEL1    (D11);   out_SEL1     = value ; }
-
-void Set_Connector (void)
-{  
-  set_MT_OUT2  ( MT_OUT2 );
-  set_BUSY     ( BUSY    );
-  set_D_OUT    ( D_OUT   );
-  set_MT_IN    ( MT_IN   );
-  set_MT_OUT1  ( MT_OUT1 );
-  set_D_IN     ( D_IN    );
-  set_ACK      ( ACK     );
-  set_SEL2     ( SEL2    );
-  set_SEL1     ( SEL1    );
-}
-
-bool Cce140f_init(void)
-{
+    // default input pull-down
+    in_BUSY.mode(PullNone);
+    in_D_OUT.mode(PullNone);
+    in_X_OUT.mode(PullNone);
+    in_D_IN.mode(PullNone);
+    in_SEL_2.mode(PullNone);
+    in_SEL_1.mode(PullNone);    
     
-    pc.printf("CE-140F initializing...\n\r");
-
-    //  SET_PIN(PIN_ACK,DOWN);
-    //pc.printf("Initial value for PIN_BUSY %c",PIN_BUSY);
-    Get_Connector();
-    Previous_PIN_BUSY = BUSY;
-    Previous_PIN_MT_OUT1 = MT_OUT1;
+    // initial triggers
+    irq_X_OUT.rise(&startDeviceCodeSeq);
     
-    code_transfer_step = 0;
-    device_code = 0;
-    wait_data_function=0;
-    halfdata = false;
-    halfdata_out = false;
-
-    run_oldstate = -1;
-    lastRunState = 0;
-    dataPtr = 0;
-
-    MT_OUT2 = false;  
-    BUSY    = false;  
-    D_OUT   = false;  
-    MT_IN   = false;
-    MT_OUT1 = false;
-    D_IN    = false;
-    ACK     = false;
-    SEL2    = false;
-    SEL1    = false;
-
     mainTimer.reset();
     mainTimer.start();
-
-    t = 0;
-    c = 0;  
+    //sprintf ( (char*)debugBuf, "Start\n\r" );
+    
+    while (1) {
+        wait (1); // logic handled with interrupts and timers
+    }
 }
-
-bool Cce140f_run(void)
-{
-
-    // get signals from connector
-    //Get_Connector();
-
-    bool bit = false;
-    ce140f_Mode=RECEIVE_MODE;
-
-    bool PIN_BUSY_GoDown = ( ( BUSY == DOWN ) && (Previous_PIN_BUSY == UP)) ? true:false;
-    bool PIN_BUSY_GoUp   = ( ( BUSY == UP ) && (Previous_PIN_BUSY == DOWN)) ? true:false;
-
-    if (code_transfer_step >0) {
-        lastRunState = mainTimer.read_ms();
-    }
-
-    switch (code_transfer_step) {
-    case 0 :    if ((get_MT_OUT1() == UP) && (get_D_OUT() == UP)) {
-                    // Device Code protocol started with XOUT & DOUT up
-                    mainTimer.reset();
-                    lastState = mainTimer.read_ms(); //time.restart();
-                    code_transfer_step=1;
-                }
-                busyLed = 0;
-                break;
-    case 1 :    if ((get_MT_OUT1() == UP) && (get_D_OUT() == UP)) {
-                    if ((mainTimer.read_ms() - lastState) > 40) {
-                        // XOUT & DOUT up for 40 ms: Device bit sending started 
-                        // Raise ACK
-                        code_transfer_step = 2;
-                        set_ACK ( UP );
-                        busyLed = 1; 
-                        sprintf(debugBuf, "1 - %d %d %d\n\r", mainTimer.read_us(), lastState, mainTimer.read_ms());
-                    }
-                }
-                else {
-                    code_transfer_step=0;
-                }
-                break;
-    case 2:     if ( get_BUSY() == UP ){ // New bit available
-                    if( get_D_OUT() == UP )
-                        bit = true;
-                    else
-                        bit = false;
-                    sprintf(debugLine, "2 - %d bit %d %d\n\r", mainTimer.read_us(), bit, debug_A0.read()); strcat ( debugBuf, debugLine );
-                    t>>=1;
-                    if (bit) t|=0x80;
-                    if ((c=(++c)&7)==0)  {
-                        sprintf(debugLine, "2 - %d code %x\n\r", mainTimer.read_us(), t); strcat ( debugBuf, debugLine );
-                        pc.printf(" device code: 0x%x\n\r", t);
-                        device_code = t;
-                        if (device_code==0x41) // This is for the CE-140F
-                            code_transfer_step=4;
-                        else {
-                            code_transfer_step = 0; // This is not for us
-                            t=0; c=0;
-                        }
-                    } else  {
-                        code_transfer_step=3;
-                        lastState=mainTimer.read_ms();
-                    }
-                    set_ACK ( DOWN ); // bit received
-                }
-                break;
-    case 3:     if ((mainTimer.read_ms() - lastState) > 2) {
-                    sprintf(debugLine, "3 - %d\n\r", mainTimer.read_us()); strcat ( debugBuf, debugLine );
-                    code_transfer_step=2;
-                    // wait 2 ms then raise again ACK - ready for next bit
-                    set_ACK ( UP );
-                }
-                break;
-    case 4:     if ((get_BUSY() == DOWN)&&(get_MT_OUT1() == DOWN)) {
-                    sprintf(debugLine, "4 - %d\n\r", mainTimer.read_us()); strcat ( debugBuf, debugLine );
-                    set_ACK ( UP );
-                    code_transfer_step=5;
-                    lastState=mainTimer.read_ms(); //time.restart();
-                    t=0; c=0;
-                }
-                break;
-    case 5:     if ((mainTimer.read_ms() - lastState) > 9) {
-                    sprintf(debugLine, "5 - %d\n\r", mainTimer.read_us()); strcat ( debugBuf, debugLine );
-                    set_ACK ( DOWN );
-                    code_transfer_step=0;
-                }
-                break;
-            }
-
-/* 
-    if ( (device_code == 0x41) && (code_transfer_step==0)) {
-        if (PIN_BUSY_GoUp && (ACK==DOWN)) {
-            
-            lastRunState = mainTimer.read_ms();
-            // read the 4 bits
-            t = SEL1 + (SEL2<<1) + (D_OUT<<2) + (D_IN<<3);
-            Cce140f_Push4(t);
-            ACK = UP;
-            lastState=mainTimer.read_ms(); //time.restart();
-
-        }
-        else
-        if (PIN_BUSY_GoDown && (ACK==UP)) {
-            lastRunState = mainTimer.read_ms();
-            ACK = DOWN;
-            lastState=mainTimer.read_ms();//time.restart();
-        }
-
-    else
-
-        if ( !data_out.empty() &&
-             ((mainTimer.read_ms() - lastState)>5) &&
-             (BUSY==DOWN) &&
-             (ACK==DOWN)) {
-            lastRunState = mainTimer.read_ms();
-            uint8_t t = Cce140f_Pop_out4();
-
-            SEL1 = (t&0x01);
-            SEL2 = ((t&0x02)>>1);
-            D_OUT= ((t&0x04)>>2);
-            D_IN = ((t&0x08)>>3);
-
-            ACK = UP;
-        }
-        else
-            if ( (ACK==UP) && PIN_BUSY_GoUp) {
-                lastRunState = mainTimer.read_ms();
-                ACK = DOWN;
-            }
-        else
-            if ( ((mainTimer.read_ms() - lastState)>50) && !data.empty()) {
-                lastRunState = mainTimer.read_ms();
-                processCommand();
-                data.clear();
-            }
-
-    }
-
-
-
-
-    if (mainTimer->msElapsed(lastRunState)<3000) {
-
-        if (!busyLed) {
-            busyLed = true;
-            Refresh_Display = true;
-//            update();
-        }
-    }
-    else {
-        if (busyLed) {
-            busyLed = false;
-            Refresh_Display = true;
-//            update();
-        }
-    }
-*/
-    
-    Previous_PIN_BUSY = BUSY;
-    Previous_PIN_MT_OUT1 = MT_OUT1;
-    Previous_PIN_D_OUT = D_OUT;
-
-    // send signals out
-    //Set_Connector();
-    
-    return true;
-    
-}
-
-
-// ....  Cce140f_processCommand,  etc.
