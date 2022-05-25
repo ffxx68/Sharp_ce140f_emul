@@ -13,19 +13,18 @@
 #define DEBUG_SIZE 1024 // print debug buffer
 #define NIBBLE_DELAY_1 20 // us
 #define NIBBLE_DELAY_2 20 // us
-#define BIT_DELAY_1 100 // us
+#define BIT_DELAY_1 200 // us
 #define BIT_DELAY_2 2000 // us
 #define ACK_DELAY 20000 // us
-#define ACK_TIMEOUT 1 // s
+#define ACK_TIMEOUT 3 // s
 #define DATA_WAIT 9000 // us
 #define IN_DATAREADY_TIMEOUT 50000 // ms
-
 
 // input ports
 DigitalIn   in_BUSY   (D4);    
 InterruptIn irq_BUSY  (D4);    
 DigitalIn   in_D_OUT  (D5);    
-InterruptIn irq_DOUT  (D5);
+InterruptIn irq_D_OUT  (D5);
 DigitalIn   in_X_OUT  (D7);     
 InterruptIn irq_X_OUT (D7);
 DigitalIn   in_D_IN   (D8);  
@@ -120,7 +119,6 @@ void inDataReady ( void ) {
 
 void nibbleReady ( void ) {
     
-    //pc.putc('n');
     if ( out_ACK == 0 ) {
         uint8_t dataByte;
         wait_us ( NIBBLE_DELAY_1 );
@@ -159,17 +157,14 @@ void nibbleAck ( void ) {
 void bitReady ( void ) {
     uint32_t nTimeout;
     
-    //pc.putc('b');
     if ( out_ACK == 1 ) {
         bool bit;
         wait_us ( BIT_DELAY_1 );
-        
         bit = in_D_OUT; // get bit value
         //pc.putc(0x30+bit);pc.putc(' ');
         sprintf ( (char*)debugLine, "%d bit %d: %d\n\r", mainTimer.read_us(), bitCount, bit ); strcat ( (char*)debugBuf, (char*)debugLine) ;
         out_ACK = 0; // tell PC a bit has been received
         infoLed = 0;
-        
         deviceCode>>=1;
         if (bit) deviceCode|=0x80;
         if ((bitCount=(++bitCount)&7)==0) {
@@ -213,8 +208,6 @@ void bitReady ( void ) {
     
 }
 
-
-
 void startDeviceCodeSeq ( void ) {
     
     wait_us (BIT_DELAY_1);
@@ -238,7 +231,6 @@ void startDeviceCodeSeq ( void ) {
     
     }
 }
-
 
 void btnRaised() 
 {
@@ -265,14 +257,16 @@ int main(void) {
     inBufPosition = 0;
     
     // default input pull-down
-    in_BUSY.mode(PullNone);
-    in_D_OUT.mode(PullNone);
-    in_X_OUT.mode(PullNone);
-    in_D_IN.mode(PullNone);
-    in_SEL_2.mode(PullNone);
-    in_SEL_1.mode(PullNone);    
+    in_BUSY.mode(PullDown);
+    in_D_OUT.mode(PullDown);
+    in_X_OUT.mode(PullDown);
+    in_D_IN.mode(PullDown);
+    in_SEL_2.mode(PullDown);
+    in_SEL_1.mode(PullDown);    
     
-    // initial triggers
+    out_ACK = 0;
+    
+    // initial triggers (device sequence handshake)
     irq_X_OUT.rise(&startDeviceCodeSeq);
     
     mainTimer.reset();
