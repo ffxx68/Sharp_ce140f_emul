@@ -1,30 +1,41 @@
+////////////////////////////////////////////////////////
+// Sharp CE-140F diskette emulator
+//
+// v1 1/6/2022 - adaptation to MBed NUCLEO 
+// of the version received by contact@pockemul.com
+//
+////////////////////////////////////////////////////////
 #include "mbed.h"
 
-#define BUF_SIZE 1024 // data depth
-#define DEBUG_SIZE 1024 // print debug buffer
-#define NIBBLE_DELAY_1 20 // us
-#define NIBBLE_DELAY_2 20 // us
-#define BIT_DELAY_1 100 // us
+#define BUF_SIZE 128 // data depth
+#define DEBUG_SIZE 2048 // print debug buffer
+#define NIBBLE_DELAY_1 100 // us
+#define NIBBLE_ACK_DELAY 100 // us
+#define BIT_DELAY_1 200 // us
 #define BIT_DELAY_2 2000 // us
 #define ACK_DELAY 20000 // us
 #define ACK_TIMEOUT 1 // s
 #define DATA_WAIT 9000 // us
-#define IN_DATAREADY_TIMEOUT 50000 // ms
+#define IN_DATAREADY_TIMEOUT 1 // s - how long ??
 
 // input ports
-DigitalIn   in_BUSY   (D4);    
-InterruptIn irq_BUSY  (D4);    
-DigitalIn   in_D_OUT  (D5);    
-InterruptIn irq_DOUT  (D5);
-DigitalIn   in_X_OUT  (D7);     
-InterruptIn irq_X_OUT (D7);
-DigitalIn   in_D_IN   (D8);  
-DigitalIn   in_SEL_2   (D10);     
-DigitalIn   in_SEL_1   (D11);
+DigitalIn   in_BUSY     (D4);    
+InterruptIn irq_BUSY    (D4);    
+DigitalIn   in_D_OUT    (D5);    
+InterruptIn irq_D_OUT   (D5);
+DigitalIn   in_X_OUT    (D7);     
+InterruptIn irq_X_OUT   (D7);
+DigitalIn   in_D_IN     (D8);  
+DigitalIn   in_SEL_2    (D10);     
+DigitalIn   in_SEL_1    (D11);
+
 // output ports  
-DigitalOut        out_ACK   (D9);     
+DigitalOut        out_ACK     (D9);     
+DigitalOut        out_X_OUT   (D12);     
+
 // info led
 DigitalOut        infoLed   (LED1);
+
 // timers
 Timer             mainTimer;
 Timeout           ackOffTimeout;
@@ -40,20 +51,23 @@ volatile uint8_t  deviceCode;
 volatile uint8_t  bitCount;
 volatile char     debugBuf[DEBUG_SIZE];
 volatile char     debugLine[80];
-volatile bool     highNibble = false;
+volatile bool     highNibbleIn = false;
+volatile uint8_t  dataInByte;
 volatile char     inDataBuf[BUF_SIZE];
 volatile char     outDataBuf[BUF_SIZE];
 volatile uint16_t inBufPosition;
 volatile uint16_t outBufPosition;
-volatile int checksum = 0;
+volatile int      checksum = 0;
 
 void debug_log(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    sprintf((char*)debugLine,format,args);
-    sprintf((char*)debugLine,"%d %s\n\r",mainTimer.read_us(),(char*)debugLine);
+    sprintf((char*)debugLine,"%d ",mainTimer.read_us());
     strcat((char*)debugBuf,(char*)debugLine);
+    sprintf((char*)debugLine,format,args);
+    strcat((char*)debugBuf,(char*)debugLine);
+    strcat((char*)debugBuf,"\n\r");
     va_end(args);
 }
 
@@ -81,20 +95,22 @@ void sendString(char* s) {
 }
 
 void inDataReady ( void ) {
+    
+    pc.putc('p');
     // Command processing here ...
-    sprintf ( (char*)debugLine, "%d Processing...\n\r", mainTimer.read_us()) ; strcat ((char*)debugBuf, (char*)debugLine) ;
-    if (  inBufPosition > 0 ) {
+    sprintf ( (char*)debugLine, "\n\r%d Processing...\n\r", mainTimer.read_us()) ; strcat ((char*)debugBuf, (char*)debugLine) ;
+    if ( inBufPosition > 0 ) {
         sprintf ( (char*)debugLine, "%d inBufPosition %d...\n\r", mainTimer.read_us(), inBufPosition) ; strcat ((char*)debugBuf, (char*)debugLine) ;
 
         // Verify checksum
         checksum=0;
-        for (int i =0;i<inBufPosition;i++) {
+        for (int i=0;i<inBufPosition;i++) {
             checksum = (inDataBuf[i]+checksum) & 0xff;
         }   
-        debug_log ( "checksum %d vs %d" , checksum, inDataBuf[inBufPosition]); 
+        sprintf ( (char*)debugLine, "%d checksum 0x%02X vs 0x%02X\n\r" ,  mainTimer.read_us(), checksum, inDataBuf[inBufPosition-1]); strcat ((char*)debugBuf, (char*)debugLine) ;
         
         // ....
-        debug_log ( "command 0x%02X" , inDataBuf[0]); 
+        sprintf ( (char*)debugLine, "%d command 0x%02X\n\r" , mainTimer.read_us(), inDataBuf[0]); strcat ((char*)debugBuf, (char*)debugLine) ;
         checksum=0;
         outBufPosition = 0;
         
@@ -109,89 +125,89 @@ void inDataReady ( void ) {
 }
 
 void nibbleReady ( void ) {
-    
-    //pc.putc('n');
+    // test lines
+    char inNibble = ( in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3) );
+    //sprintf ( (char*)debugLine, "%d (%d) %01X ", mainTimer.read_us(), highNibbleIn, inNibble ) ; strcat ((char*)debugBuf, (char*)debugLine) ;
     if ( out_ACK == 0 ) {
-        uint8_t dataByte;
         wait_us ( NIBBLE_DELAY_1 );
-        if ( highNibble ) {
-            highNibble = false;
-            dataByte <<= 4;
-            dataByte |= in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3);
-            //pc.putc(dataByte);
-            inDataBuf [ (inBufPosition++)%BUF_SIZE ] = dataByte ; // circular storage for safety; may cut off data!
-            // Data processing starts after last byte (timeout reset at each byte received) 
-            inDataReadyTimeout.attach( &inDataReady, IN_DATAREADY_TIMEOUT );
-        } else {
-            dataByte = in_SEL_1 + (in_SEL_1<<1) + (in_D_OUT<<2) + (in_D_IN<<3);
-            //pc.putc(dataByte);
-            highNibble = true;
-        }
-        sprintf ( (char*)debugLine, "%d nibble %d 0x%02X\n\r", mainTimer.read_us(), highNibble, dataByte ); strcat ( (char*)debugBuf, (char*)debugLine) ;
         out_ACK = 1;
         infoLed = 1;
         ackOffTimeout.attach( &ackOff, ACK_TIMEOUT ); // max time high ack
+        if ( highNibbleIn ) {
+            highNibbleIn = false;
+            inDataBuf[inBufPosition] = (inNibble << 4) + inDataBuf[inBufPosition];
+            checksum = (inDataBuf[inBufPosition] + checksum) & 0xff;
+            sprintf ( (char*)debugLine, " %d:%02X [%02x]\n\r", inBufPosition, inDataBuf[inBufPosition], checksum ) ; strcat ((char*)debugBuf, (char*)debugLine) ;
+            inBufPosition = (inBufPosition++)%BUF_SIZE; // circular for safety; may cut off data!
+            // Data processing starts after last byte (timeout reset at each byte received) 
+            inDataReadyTimeout.attach( &inDataReady, IN_DATAREADY_TIMEOUT );
+        } else {
+            highNibbleIn = true;
+            inDataBuf[inBufPosition] = inNibble;
+            //sprintf ( (char*)debugLine, " %01X", inDataBuf[inBufPosition] ) ; strcat ((char*)debugBuf, (char*)debugLine) ;
+        }
     } else {
-        out_ACK = 0;
+        sprintf ( (char*)debugLine, "%d nibbleReady out_ACK!=0\n\r", mainTimer.read_us() ); strcat ( (char*)debugBuf, (char*)debugLine) ;
     }
 }
 
 void nibbleAck ( void ) {
+    // test lines
+    //sprintf ( (char*)debugLine, "%d ack (%01X)\n\r", mainTimer.read_us(), ( in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3) )) ; strcat ((char*)debugBuf, (char*)debugLine) ;
     if ( out_ACK == 1 ) {
-        wait_us ( NIBBLE_DELAY_2 );
+        wait_us ( NIBBLE_ACK_DELAY );
         out_ACK = 0;
         infoLed = 0;
+    } else {
+        sprintf ( (char*)debugLine, "%d nibbleAck out_ACK!=1\n\r", mainTimer.read_us() ); strcat ( (char*)debugBuf, (char*)debugLine) ;
     }
 }
-
 
 // Serial bit receive
 void bitReady ( void ) {
     uint32_t nTimeout;
     
-    //pc.putc('b');
     if ( out_ACK == 1 ) {
         bool bit;
         wait_us ( BIT_DELAY_1 );
-        
         bit = in_D_OUT; // get bit value
         //pc.putc(0x30+bit);pc.putc(' ');
-        sprintf ( (char*)debugLine, "%d bit %d: %d\n\r", mainTimer.read_us(), bitCount, bit ); strcat ( (char*)debugBuf, (char*)debugLine) ;
-        out_ACK = 0; // tell PC a bit has been received
+        //sprintf ( (char*)debugLine, "%d bit %d: %d\n\r", mainTimer.read_us(), bitCount, bit ); strcat ( (char*)debugBuf, (char*)debugLine) ;
+        out_ACK = 0; // bit has been received
         infoLed = 0;
-        
         deviceCode>>=1;
         if (bit) deviceCode|=0x80;
         if ((bitCount=(++bitCount)&7)==0) {
             // 8 bits received
             irq_BUSY.rise(NULL); // detach this IRQ
-            pc.printf(" Device 0x%02X\n\r",deviceCode);
+            pc.printf(" Device ID 0x%02X\n\r",deviceCode);
             sprintf ( (char*)debugLine, "%d device 0x%02X\n\r", mainTimer.read_us(), deviceCode ); strcat ((char*)debugBuf, (char*)debugLine) ;
             if ( deviceCode == 0x41 ) {
-                // PC is asking for a CE140F (device code SHOULD be 0x41) - Here we are!
+                // Sharp-PC is looking for a CE140F (device code 0x41) - Here we are!
                 sprintf ( (char*)debugLine, "%d CE140F\n\r", mainTimer.read_us()); strcat ((char*)debugBuf, (char*)debugLine) ;
-                // ... start data handling ...
-                highNibble = false;
-                // wait for both BUSY and X_OUT to go down, before starting data receive
-                nTimeout = 10000; // timeout: 1s
+                inBufPosition = 0;
+                highNibbleIn = false;
+                checksum = 0;
+                // set data handshake triggers on the BUSY input
+                irq_BUSY.fall(&nibbleAck);
+                irq_BUSY.rise(&nibbleReady);
+                // check for both BUSY and X_OUT to go down, before starting data receive
+                nTimeout = 100000; // timeout: 1s
                 while ( ( in_X_OUT || in_BUSY ) && (nTimeout--) ) {
-                    wait_us (100);
+                    wait_us (10);
                 }
                 if (nTimeout) {
-                    sprintf ( (char*)debugLine, "%d Data...\n\r", mainTimer.read_us()) ; strcat ((char*)debugBuf, (char*)debugLine) ;
+                    // ... start data handling ...
                     out_ACK = 1;
                     infoLed = 1;
-                    wait_us ( DATA_WAIT ); 
-                    highNibble = false;             
-                    out_ACK = 0; // ready for receiving new data
+                    wait_us ( DATA_WAIT );
+                    out_ACK = 0;
                     infoLed = 0;
-                    inBufPosition = 0;
-                    irq_BUSY.rise(&nibbleReady); 
-                    irq_BUSY.fall(&nibbleAck);
                 } else {
                     pc.putc('x');
                     sprintf ( (char*)debugLine, "%d Timeout!\n\r", mainTimer.read_us()) ; strcat ((char*)debugBuf, (char*)debugLine) ;
                 }
+
             } 
         } else {
             wait_us ( BIT_DELAY_2 );
@@ -200,10 +216,7 @@ void bitReady ( void ) {
             ackOffTimeout.attach( &ackOff, ACK_TIMEOUT ); // max time high ack
         }
     }
-    
 }
-
-
 
 void startDeviceCodeSeq ( void ) {
     
@@ -220,7 +233,7 @@ void startDeviceCodeSeq ( void ) {
         deviceCode = 0;
         sprintf ( (char*)debugBuf, "Device\n\r" ); 
 
-        wait_us (ACK_DELAY) ;   //?? wait after eabling trigger?
+        wait_us (ACK_DELAY) ;   //?? or, wait AFTER eabling trigger ??
         // serial bit trigger
         irq_BUSY.rise(&bitReady);
         irq_BUSY.fall(NULL);
@@ -228,7 +241,6 @@ void startDeviceCodeSeq ( void ) {
     
     }
 }
-
 
 void btnRaised() 
 {
@@ -255,14 +267,18 @@ int main(void) {
     inBufPosition = 0;
     
     // default input pull-down
-    in_BUSY.mode(PullNone);
-    in_D_OUT.mode(PullNone);
-    in_X_OUT.mode(PullNone);
-    in_D_IN.mode(PullNone);
-    in_SEL_2.mode(PullNone);
-    in_SEL_1.mode(PullNone);    
+    in_BUSY.mode(PullDown);
+    in_D_OUT.mode(PullDown);
+    in_X_OUT.mode(PullDown);
+    in_D_IN.mode(PullDown);
+    in_SEL_2.mode(PullDown);
+    in_SEL_1.mode(PullDown);    
     
-    // initial triggers
+    // default outputs
+    out_ACK = 0;
+    out_X_OUT = 0;
+    
+    // initial triggers (device sequence handshake)
     irq_X_OUT.rise(&startDeviceCodeSeq);
     
     mainTimer.reset();
