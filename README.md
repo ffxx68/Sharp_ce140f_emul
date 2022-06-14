@@ -20,21 +20,18 @@ I initially struggled to get the Nucleo board properly receive the Device Code f
 
 I reached a point where the correct 0x41 device code is got, and the follow-up command sequence is received as well:
 
-1627851 device 0x41
-1627977 CE140F
-1628087 Data...
-1637953 nibble 1 0x07
-1638889 nibble 0 0x00
-1640241 nibble 1 0x08
-1641178 nibble 0 0x05
-1642713 nibble 1 0x08
-1643841 nibble 0 0x03
-1645378 nibble 1 0x08
-1646500 nibble 0 0x02
-1648037 nibble 1 0x00
+```
+287873074 Device ID 0x41
+287873193 CE140F
+ 0:05 [05] 1:58 [5D] 2:3A [97] 3:2A [C1] 4:20 [E1] 5:20 [01] 6:20 [21] 7:20 [41] 8:20 [61] 9:20 [81] 10:20 [A1] 11:2E [CF] 12:2A [F9] 13:20 [19] 14:20 [39] 15:39 [72]
+288918489 Processing...
+288918623 inBufPosition 16...
+288918792 checksum 0x39 vs 0x39
+288919924 command 0x05
 ...
+```
 
-Now I have to set up the return lines, as well as complete the code to properly process commands and send results back.
+Now I have to set up the return path, as well as complete the code to properly process commands and send results back...
 
 ## Acknowledgements
 All of this was made possible thanks to the help of the community of Sharp-PC enthusiasts, and in particular to the invaluable contribution by Remy, author of the https://pockemul.com/ emulator, who reverse engineered the CE-140F protocol.
