@@ -14,13 +14,12 @@ with each line being like
 
 ![image](https://user-images.githubusercontent.com/659557/166907967-b0771314-bf71-4cde-9ebd-4cc6bff93868.png)
 
-I initially struggled to get the Nucleo board properly receive the Device Code from the PC, which is the first step of the communication handshake. At first, using the level converter on all data lines, I always got a 0xFF (0x41 is expected, when a FILES command for example is issued on the Sharp-PC, to invoke the Disk Drive). The board is 5v-input tolerant, but its 3.3v output isn't enough to drive the 5v input on the PC, so I left the level converter only for the ACK line, removing it from the other ones, as I found out the converter kept a high value on inputs, because of the normally high impedance of Sharp-PC outputs. After a number of trials and errors, I finally configured Nucleo internal pull-down on input lines (45K resistor each, as per datasheet) and added 10K in series, as in the schematics above.
+I initially struggled to get the Nucleo board properly receive the Device Code from the PC, which is the first step of the communication handshake. At first, using the level converter on all data lines, I always got a 0xFF (0x41 is expected, when a FILES command for example is issued on the Sharp-PC, to invoke the Disk Drive). After a number of trials and errors, I found out that the converter kept a high value on Nucleo inputs because of the normally high impedance of Sharp-PC outputs. The board is 5v-input tolerant, but its 3.3v output isn't enough to drive the 5v input on the PC, so I left the level converter only for the ACK line, removing it from the other ones. I then finally configured Nucleo internal pull-down on each input line (45K resistor, as per datasheet) and added 10K in series, as in the schematics above, to achieve the 5-to-3.3 divide.
 
-Return lines (Nucleo-to-Sharp) make use of different pins of the Nucleo board, converted to 5v and issued to the 11-pin connector through diodes, so to isolate them from inputs (Nucleo-to-Sharp), by leaving them low during the reading stages.
+This way, I reached a point where the correct 0x41 device code was got, and the follow-up command sequence is received as well, but forced me to use different pins of the Nucleo boardf or the return lines (Nucleo-to-Sharp) I hence decided  converted to 5v and issued to the 11-pin connector through diodes, so to isolate them from inputs (Sharp-to-Nucleo).
 
-I reached a point where the correct 0x41 device code is got, and the follow-up command sequence is received as well.
-I wrote some code to process the DSKF command, for the timebeing.
-Processing of the command issued at Sharp PC end:
+Then I wrote some code to process only a simple 'DSKF' command, for the timebeing, which is to query free space on the Disk Drive.
+It worked as expected! Issuing this command on the Sharp:
 
 ```
 >DSKF 1
@@ -63,7 +62,7 @@ Just for the sake of completeness, I attach below a fragment from the board debu
 11082774 send complete
 ```
 
-Next steps will be to complete most of the command processing (FILES, SAVE, LOAD, at least), with the idea of using an SD-Card for storage.
+Next steps will be to complete code for the most fundamental commands (FILES, SAVE, LOAD, at least), using an SD-Card for storage. So, first of all, I need to add an SD-CArd to the board...
 
 ## Acknowledgements
-All of this was made possible thanks to the help of the community of Sharp-PC enthusiasts, and in particular to the invaluable contribution by Remy, author of the https://pockemul.com/ emulator, who reverse engineered the CE-140F protocol.
+All of this was made possible thanks to the help of the community of Sharp-PC enthusiasts, and in particular to the invaluable and excellent contribution by Remy, author of the https://pockemul.com/ emulator, who reverse engineered the CE-140F protocol.
