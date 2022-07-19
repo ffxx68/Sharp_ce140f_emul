@@ -119,7 +119,7 @@ void process_FILES(void) {
         outDataAppend(CheckSum(n_files));
         outDataAppend(checksum);
         
-        process_FILES_LIST ( 0x00 ); // append first file name too
+        // process_FILES_LIST ( 0x00 ); // append first file name by default ?
         
     } else {
         // could not open directory
