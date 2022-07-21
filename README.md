@@ -29,7 +29,10 @@ returns succesfully the expected nuber of bytes in the (emulated) disk:
  16384
 ```
 
-Just for the sake of completeness, I attach below a fragment from the board debug log: 
+The working prototype looks like this at present:
+![20220721_090621](https://user-images.githubusercontent.com/659557/180180992-6d9be30f-607c-4927-bcbf-eb3c7a3ea95e.jpg)
+
+And, just for the sake of completeness, here's a fragment from the board debug log: 
 ```
 10953529 Device ID 0x41
 10953645 CE140F
