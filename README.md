@@ -16,10 +16,10 @@ with each line being like
 
 I initially struggled to get the Nucleo board properly receive the Device Code from the PC, which is the first step of the communication handshake. At first, using the level converter on all data lines, I always got a 0xFF (0x41 is expected, when a FILES command for example is issued on the Sharp-PC, to invoke the Disk Drive). After a number of trials and errors, I found out that the converter kept a high value on Nucleo inputs because of the normally high impedance of Sharp-PC outputs. The board is 5v-input tolerant, but its 3.3v output isn't enough to drive the 5v input on the PC, so I left the level converter only for the ACK line, removing it from the other ones. I then finally configured Nucleo internal pull-down on each input line (45K resistor, as per datasheet) and added 10K in series, as in the schematics above, to achieve the 5-to-3.3 divide.
 
-This way, I reached a point where the correct 0x41 device code was got, and the follow-up command sequence is received as well, but forced me to use different pins of the Nucleo boardf or the return lines (Nucleo-to-Sharp) I hence decided  converted to 5v and issued to the 11-pin connector through diodes, so to isolate them from inputs (Sharp-to-Nucleo).
+This way, I reached a stage where the correct 0x41 device code, as well as the follow-up command sequence is received, but it forced me to use different pins of the Nucleo board for the return lines (Nucleo-to-Sharp), converting them to 5v and issuing to the 11-pin connector through diodes, to isolate them from inputs (Sharp-to-Nucleo). See schematics.
 
-Then I wrote some code to process only a simple 'DSKF' command, for the timebeing, which is to query free space on the Disk Drive.
-It worked as expected! Issuing this command on the Sharp:
+Then, I wrote some code to process only a simple 'DSKF' command, for the timebeing, which is to query free space on the Disk Drive.
+It worked as expected, as issuing this on the Sharp:
 
 ```
 >DSKF 1
@@ -62,7 +62,7 @@ Just for the sake of completeness, I attach below a fragment from the board debu
 11082774 send complete
 ```
 
-Next steps will be to complete code for the most fundamental commands (FILES, SAVE, LOAD, at least), using an SD-Card for storage. So, first of all, I need to add an SD-CArd to the board...
+Next step will be to complete code for the most fundamental commands (FILES, SAVE, LOAD, at least), using the SD-Card as the storage device. This is a work in progress.
 
 ## Acknowledgements
 All of this was made possible thanks to the help of the community of Sharp-PC enthusiasts, and in particular to the invaluable and excellent contribution by Remy, author of the https://pockemul.com/ emulator, who reverse engineered the CE-140F protocol.
