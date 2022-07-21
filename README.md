@@ -6,7 +6,7 @@ attached to a Sharp Pocket Computer (PC-1403) through the Sharp proprietary 11-p
 
 Interface schematics (subject to further revisions):
 
-![sharp-ce140f-emul_v5](https://user-images.githubusercontent.com/659557/173877293-9986bfe0-33c2-4b01-9439-2c26cb54d2a0.png)
+![sharp-ce140f-emul_v6](https://user-images.githubusercontent.com/659557/180151183-217ed43e-d923-4e91-a60c-8884b763ffbe.png)
 
 Since the Sharp PC uses a CMOS 5v logic, a level shifter is required in between the two devices. The level converter I used is one of this type: https://www.sparkfun.com/products/12009 (actually, one of the many clones).
 
