@@ -81,6 +81,8 @@ void debug_log(const char *fmt, ...)
 }
 #endif
 
+void testOutputSequence ( void );
+
 void btnRaised() 
 {
     uint8_t i = 20;
@@ -101,54 +103,96 @@ void  ackOff ( void ) {
     infoLed = 0;
 }
 
-/* only if we replace testOutputSequence 
-   with an asynchronous approach ...
-void outNibbleSend ( void ) {
-    uint8_t t;
-    pc.putc('o');
-    debug_log ( "outNibbleSend (%d)\n", highNibbleOut);
-    if ( out_ACK == 0 ) {
-        wait_us(OUT_NIBBLE_DELAY); 
-        if ( (outDataPointer < outBufPosition) & highNibbleOut ) {
-            if ( highNibbleOut ) {
+
+void inDataReady ( void ) {
+    
+    pc.putc('c');
+    // Command processing starts here ...
+    debug_log ( "\nProcessing...\n" ) ;
+    if ( inBufPosition > 0 ) {
+        debug_log ( "inBufPosition %d...\n", inBufPosition) ; 
+        // Verify checksum
+        checksum=0;
+        for (int i=0;i<inBufPosition-1;i++) {
+            checksum = (inDataBuf[i]+checksum) & 0xff;
+        }   
+        debug_log ( "checksum 0x%02X vs 0x%02X\n" ,  checksum, inDataBuf[inBufPosition-1]); 
+        if ( checksum == inDataBuf[inBufPosition-1]) {
+            // processing command
+            pc.printf(" 0x%02X\n\r", inDataBuf[0]);
+            debug_log ( "command 0x%02X\n" , inDataBuf[0]); 
+            outDataTicker.detach();   // safety ?       
+            
+            // decode and process commands
+            ProcessCommand ();  
+            inBufPosition = 0;
+                       
+            if ( outBufPosition > 0 ) {
+                // data ready for sending 
+                debug_log ( "dataout %u [%02X] -%d\n" , outBufPosition, checksum, in_BUSY); 
+                outDataPointer = 0;
                 highNibbleOut = false;
-                t = (dataOutByte & 0x0F);
-                debug_log ( " %1X\n", dataOutByte, t);
+                // 
+                irq_BUSY.fall(NULL);
+                irq_BUSY.rise(NULL);
+                
+                // This should be asynchronous?
+                testOutputSequence();
+                
             } else {
-                highNibbleOut = true;
-                dataOutByte = outDataBuf[ outDataPointer++ ];
-                t = (dataOutByte >> 4);
-                debug_log ( "dataOut 0x%02X %1X\n", dataOutByte, t);
+                pc.putc('x');
+                debug_log ( "data prepare error\n"); 
             }
             
-            out_SEL_1 = (t&0x01);
-            out_SEL_2 = ((t&0x02)>>1);
-            out_D_OUT = ((t&0x04)>>2);
-            out_D_IN  = ((t&0x08)>>3);
-            
-            out_ACK = 1;
-            
-        } else {
-            debug_log ( "dataOut complete\n"); 
+        } else
+        {
+            pc.putc('x');
+            debug_log ( "checksum error\n"); 
         }
-    } else {
-        pc.putc('x');
-        debug_log ( "outNibbleSend out_ACK!=0\n" ); 
     }
 }
 
-void outNibbleAck ( void ) {
-    debug_log ( "outNibbleAck\n"); 
+
+void inNibbleReady ( void ) {
+    // test lines
+    char inNibble = ( in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3) );
+    //debug_log ( "(%d) %01X \n", highNibbleIn, inNibble ) ; 
+    if ( out_ACK == 0 ) {
+        wait_us ( NIBBLE_DELAY_1 );
+        out_ACK = 1;
+        infoLed = 1;
+        ackOffTimeout.attach( &ackOff, ACK_TIMEOUT ); // max time high ack
+        if ( highNibbleIn ) {
+            highNibbleIn = false;
+            inDataBuf[inBufPosition] = (inNibble << 4) + inDataBuf[inBufPosition];
+            checksum = (inDataBuf[inBufPosition] + checksum) & 0xff;
+            //debug_log(" %u:%02X [%02X]\n", inBufPosition, inDataBuf[inBufPosition], checksum ) ;
+            inBufPosition++; // should be circular for safety; may cut off data!
+            // Data processing starts after last byte (timeout reset at each byte received) 
+            inDataReadyTimeout.attach_us( &inDataReady, IN_DATAREADY_TIMEOUT );
+        } else {
+            highNibbleIn = true;
+            inDataBuf[inBufPosition] = inNibble;
+            //debug_log ( " %01X\n", inDataBuf[inBufPosition] ) ; 
+        }
+    } else {
+        pc.putc('x');
+        debug_log ( "inNibbleReady out_ACK!=0\n" ) ;
+    }
+}
+
+void inNibbleAck ( void ) {
+    // test lines
+    //debug_log ( "ack (%01X)\n\r", ( in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3) )) ; 
     if ( out_ACK == 1 ) {
         wait_us ( NIBBLE_ACK_DELAY );
         out_ACK = 0;
         infoLed = 0;
     } else {
         pc.putc('x');
-        debug_log ( "outNibbleAck out_ACK!=1\n" ); 
+        debug_log ( "inNibbleAck out_ACK!=1\n" ); 
     }
 }
-*/
 
 void testOutputSequence ( void ) {
     uint8_t t;
@@ -211,100 +255,15 @@ void testOutputSequence ( void ) {
         infoLed = 0;
     } 
     debug_log ( "\nsend complete\n" );
+    
     out_D_OUT = 0;
     out_D_IN  = 0;     
     out_SEL_2 = 0;     
     out_SEL_1 = 0;
-}
-
-void inDataReady ( void ) {
     
-    pc.putc('c');
-    // Command processing starts here ...
-    debug_log ( "\nProcessing...\n" ) ;
-    if ( inBufPosition > 0 ) {
-        debug_log ( "inBufPosition %d...\n", inBufPosition) ; 
-        // Verify checksum
-        checksum=0;
-        for (int i=0;i<inBufPosition-1;i++) {
-            checksum = (inDataBuf[i]+checksum) & 0xff;
-        }   
-        debug_log ( "checksum 0x%02X vs 0x%02X\n" ,  checksum, inDataBuf[inBufPosition-1]); 
-        if ( checksum == inDataBuf[inBufPosition-1]) {
-            // processing command
-            pc.printf(" 0x%02X\n\r", inDataBuf[0]);
-            debug_log ( "command 0x%02X\n" , inDataBuf[0]); 
-            outDataTicker.detach();   // safety ?       
-            
-            // decode and process commands
-            ProcessCommand ();  
-            inBufPosition = 0;
-                       
-            if ( outBufPosition > 0 ) {
-                // data ready for sending 
-                debug_log ( "dataout %u [%02X] -%d\n" , outBufPosition, checksum, in_BUSY); 
-                outDataPointer = 0;
-                highNibbleOut = false;
-                // 
-                irq_BUSY.fall(NULL);
-                irq_BUSY.rise(NULL);
-                
-                // This should be asynchronous?
-                testOutputSequence();
-                
-            } else {
-                pc.putc('x');
-                debug_log ( "data prepare error\n"); 
-            }
-            
-        } else
-        {
-            pc.putc('x');
-            debug_log ( "checksum error\n"); 
-        }
-    }
+    // get new input data ?
 }
 
-void inNibbleReady ( void ) {
-    // test lines
-    char inNibble = ( in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3) );
-    //debug_log ( "(%d) %01X \n", highNibbleIn, inNibble ) ; 
-    if ( out_ACK == 0 ) {
-        wait_us ( NIBBLE_DELAY_1 );
-        out_ACK = 1;
-        infoLed = 1;
-        ackOffTimeout.attach( &ackOff, ACK_TIMEOUT ); // max time high ack
-        if ( highNibbleIn ) {
-            highNibbleIn = false;
-            inDataBuf[inBufPosition] = (inNibble << 4) + inDataBuf[inBufPosition];
-            checksum = (inDataBuf[inBufPosition] + checksum) & 0xff;
-            //debug_log(" %u:%02X [%02X]\n", inBufPosition, inDataBuf[inBufPosition], checksum ) ;
-            inBufPosition++; // should be circular for safety; may cut off data!
-            // Data processing starts after last byte (timeout reset at each byte received) 
-            inDataReadyTimeout.attach_us( &inDataReady, IN_DATAREADY_TIMEOUT );
-        } else {
-            highNibbleIn = true;
-            inDataBuf[inBufPosition] = inNibble;
-            //debug_log ( " %01X\n", inDataBuf[inBufPosition] ) ; 
-        }
-    } else {
-        pc.putc('x');
-        debug_log ( "inNibbleReady out_ACK!=0\n" ) ;
-    }
-}
-
-void inNibbleAck ( void ) {
-    // test lines
-    //debug_log ( "ack (%01X)\n\r", ( in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3) )) ; 
-    if ( out_ACK == 1 ) {
-        wait_us ( NIBBLE_ACK_DELAY );
-        out_ACK = 0;
-        infoLed = 0;
-    } else {
-        pc.putc('x');
-        debug_log ( "inNibbleAck out_ACK!=1\n" ); 
-    }
-}
 
 // Serial bit receive
 void bitReady ( void ) {
@@ -390,7 +349,7 @@ int main(void) {
     uint8_t i = 20;
 
     pc.baud ( 9600 ); 
-    pc.printf ( "CE140F emulator init\n\r" );
+    pc.printf ( "CE140F emulator init\n" );
     while (i--) { infoLed =! infoLed; wait_ms(20); }
     
     btn.rise(&btnRaised);
@@ -416,7 +375,6 @@ int main(void) {
     
     mainTimer.reset();
     mainTimer.start();
-    //sprintf ( (char*)debugBuf, "Start\n\r" );
     
     while (1) {
         wait (1); // logic handled with interrupts and timers
