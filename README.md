@@ -65,7 +65,7 @@ And, just for the sake of completeness, here's a fragment from the board debug l
 11082774 send complete
 ```
 
-Next step will be to complete code for the most fundamental commands (FILES, SAVE, LOAD, at least), using the SD-Card as the storage device. This is a work in progress.
+There's work-in-progess to complete code for the most fundamental commands (FILES, SAVE, LOAD, at least), using the SD-Card as the storage device. This is a work in progress.
 
 ## Acknowledgements
 All of this was made possible thanks to the help of the community of Sharp-PC enthusiasts, and in particular to the invaluable and excellent contribution by Remy, author of the https://pockemul.com/ emulator, who reverse engineered the CE-140F protocol.
