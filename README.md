@@ -6,7 +6,7 @@ attached to a Sharp Pocket Computer (PC-1403) through the Sharp proprietary 11-p
 
 Interface schematics (subject to further revisions):
 
-![sharp-ce140f-emul_v6](https://user-images.githubusercontent.com/659557/180176236-97b32975-7032-4b3f-bc5f-32e7c4718f40.png)
+![sharp-ce140f-emul](https://user-images.githubusercontent.com/659557/181733096-94cec730-24d1-45ca-934d-304d5a6b01da.png)
 
 Since the Sharp PC uses a CMOS 5v logic, a level shifter is required in between the two devices. The level converter I used is one of this type: https://www.sparkfun.com/products/12009 (actually, one of the many clones).
 
@@ -67,5 +67,14 @@ And, just for the sake of completeness, here's a fragment from the board debug l
 
 There's a work-in-progess to complete code for the most fundamental commands (FILES, SAVE, LOAD, at least), using the SD-Card as the storage device.
 
+## Build notes
+Board firmware is built using the standard methods offered by the online MBed compiler (https://os.mbed.com/), importing this GitHub repository and selecting the NUCLEO-L053R8 as the target.
+
+The MBed library included within this repository is the (now formally unsupported) version 2. This choice is imposed by the small footprint it offers, compared to v6 (even with a "bare metal" build profile). If and when I move to a larger board (e.g. a L432KC), I might upgrade to latest versions.
+
+The SD File System library is a small revision of the version found here: https://os.mbed.com/cookbook/SD-Card-File-System (the original didn't work out of the box, to me). By the way, it doesn't compile on the latest revision of the MBed library, so I had to rollback MBed (still v2) to revision #137.
+
 ## Acknowledgements
 All of this was made possible thanks to the help of the community of Sharp-PC enthusiasts, and in particular to the invaluable and excellent contribution by Remy, author of the https://pockemul.com/ emulator, who reverse engineered the CE-140F protocol.
+
+The MBed community as well was necessary to solve many issues I met along the way.
