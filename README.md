@@ -1,7 +1,7 @@
 # Sharp_ce140f_emul
 Sharp CE-140F disk drive emulator with an ST-Nucleo board
 
-This is an attempt of emulating the Sharp CE-140F disk drive with an ST-Nucleo board, a LR053R8 in this implementation, 
+This is an attempt of emulating the Sharp CE-140F disk drive with an ST-Nucleo board, a L053R8 in this implementation, 
 attached to a Sharp Pocket Computer (PC-1403) through the Sharp proprietary 11-pin interface. 
 
 Interface schematics (subject to further revisions):
@@ -24,46 +24,34 @@ It worked as expected, as issuing this on the Sharp:
 ```
 >DSKF 1
 ```
-returns succesfully the expected nuber of bytes in the (emulated) disk:
+returns succesfully the number of free bytes in the (emulated) disk. e.g.:
 ```
- 16384
+ 20482
 ```
+
+with the following debug log from the board:
+```
+1370263148 Device ID 0x41
+1370263259 CE140F
+1370328622 Processing...
+1370328733 inBufPosition 3
+1370328875 checksum 0x1E vs 0x1E
+1370334873 command 0x1D
+1370335038 DSKF
+1370335184 dataout 5 [52]
+1370340949 0: 0x00
+1370352673 1: 0x02
+1370364360 2: 0x50
+1370375994 3: 0x00
+1370387652 4: 0x52
+1370393905 send complete
+```
+
+Demo video here:
+https://youtu.be/_KBjp6MPla8
 
 The working prototype looks like this at present:
 ![20220721_090621](https://user-images.githubusercontent.com/659557/180180992-6d9be30f-607c-4927-bcbf-eb3c7a3ea95e.jpg)
-
-And, just for the sake of completeness, here's a fragment from the board debug log: 
-```
-10953529 Device ID 0x41
-10953645 CE140F
- 0:1D [1D] 1:01 [1E] 2:1E [3C]
-11019089 Processing...
-11019233 inBufPosition 3...
-11019418 checksum 0x1E vs 0x1E
-11020588 command 0x1D
-11020815 dataout 5 [A4] -1
-11026114 0(0):0x0
-11026664 ok 49989
-11031927 1(1):0x0
-11032755 ok 49978
-11038043 1(0):0x2
-11038781 ok 49983
-11044095 2(1):0x0
-11044858 ok 49983
-11050197 2(0):0x0
-11050984 ok 49983
-11056347 3(1):0x5
-11057253 ok 49979
-11062641 3(0):0x0
-11063409 ok 49986
-11068823 4(1):0x0
-11069663 ok 49984
-11075101 4(0):0x2
-11075829 ok 49990
-11081293 5(1):0x5
-11082298 ok 49979
-11082774 send complete
-```
 
 There's a work-in-progess to complete code for the most fundamental commands (FILES, SAVE, LOAD, at least), using the SD-Card as the storage device.
 
