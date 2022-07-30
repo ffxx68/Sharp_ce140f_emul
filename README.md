@@ -16,13 +16,13 @@ with each line being like
 
 I initially struggled to get the Nucleo board properly receive the Device Code from the PC, which is the first step of the communication handshake. At first, using the level converter on all data lines, I always got a 0xFF (0x41 is expected, when a FILES command for example is issued on the Sharp-PC, to invoke the Disk Drive). After a number of trials and errors, I found out that the converter kept a high value on Nucleo inputs because of the normally high impedance of Sharp-PC outputs. The board is 5v-input tolerant, but its 3.3v output isn't enough to drive the 5v input on the PC, so I left the level converter only for the ACK line, removing it from the other ones. I then finally configured Nucleo internal pull-down on each input line (45K resistor, as per datasheet) and added 10K in series, as in the schematics above, to achieve the 5-to-3.3 divide.
 
-This way, I reached a stage where the correct 0x41 device code, as well as the follow-up command sequence is received, but it forced me to use different pins of the Nucleo board for the return lines (Nucleo-to-Sharp), converting them to 5v and issuing to the 11-pin connector through diodes, to isolate them from inputs (Sharp-to-Nucleo). See schematics. Output and Input stages are separeted in time, and during output, input pins on NUcleo needs to be set to PullNone (i.e. high impedance) mode.
+This way, I reached a stage where the correct 0x41 device code, as well as the follow-up command sequence is received, but it forced me to use different pins of the Nucleo board for the return lines (Nucleo-to-Sharp), converting them to 5v and issuing to the 11-pin connector through diodes, to isolate them from inputs (Sharp-to-Nucleo). See schematics. Output and Input stages are time-separated, and during output, input pins on Nucleo needs to be set to PullNone (i.e. high impedance) mode.
 
 Then, I wrote some code to process only a simple 'DSKF' command, for the timebeing, which is to query free space on the Disk Drive.
 It worked as expected, as issuing this on the Sharp:
 
 ```
->DSKF 1
+> DSKF 1
 ```
 returns succesfully the number of free bytes in the (emulated) disk. e.g.:
 ```
@@ -52,10 +52,9 @@ https://youtu.be/_KBjp6MPla8
 
 The working prototype looks like this at present:
 ![20220721_090621](https://user-images.githubusercontent.com/659557/180180992-6d9be30f-607c-4927-bcbf-eb3c7a3ea95e.jpg)
+but I have in mind to move to a better looking proto-board build, maybe switching to a slightly more compact (and powerful) board, like the L432KC for example This will happen I think as soon as I reach a sufficiently stable version, mainly on the software side, where there's a work-in-progess on the most fundamental commands (FILES, SAVE, LOAD, at least), using the SD-Card as the storage device.
 
-There's a work-in-progess to complete code for the most fundamental commands (FILES, SAVE, LOAD, at least), using the SD-Card as the storage device.
-
-## Build notes
+## Software build notes
 Board firmware is built using the standard methods offered by the online MBed compiler (https://os.mbed.com/), importing this GitHub repository and selecting the NUCLEO-L053R8 as the target.
 
 The MBed library included within this repository is the (now formally unsupported) version 2. This choice is imposed by the small footprint it offers, compared to v6 (even with a "bare metal" build profile). If and when I move to a larger board (e.g. a L432KC), I might upgrade to latest versions.
