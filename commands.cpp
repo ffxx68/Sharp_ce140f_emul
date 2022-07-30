@@ -256,12 +256,15 @@ void process_LOAD(uint8_t cmd) {
 }
 
 void process_DSKF(void) {
+        int diskspace = 20482; // test example
         debug_log ( "DSKF\n" ); 
+        debug_log ( "diskspace %d\n",  diskspace);
+
         outDataAppend(CheckSum(0x00));
-        outDataAppend(CheckSum(0x02));  // number of byte
-        outDataAppend(CheckSum(0x50));  // number of 256Bytes free sectors
-        outDataAppend(CheckSum(0x00));
-        outDataAppend(0x52);  // don't know yet. Perhaps a checksum ?     
+        outDataAppend(CheckSum(diskspace & 0xff));  // number of bytes 
+        outDataAppend(CheckSum((diskspace >> 8) & 0xff));  // number of 256Bytes free sectors
+        outDataAppend(CheckSum((diskspace >> 16) & 0xff));
+        outDataAppend(checksum);  // don't know yet. Perhaps a checksum ?     
 }    
 
 void ProcessCommand ( void ) {
@@ -309,6 +312,7 @@ void ProcessCommand ( void ) {
     */
     default:
         debug_log ( "Unsupported command (yet...)" ); 
+        pc.putc('x');
         break;
     }
         
