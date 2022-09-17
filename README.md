@@ -18,7 +18,7 @@ I initially struggled to get the Nucleo board properly receive the Device Code f
 
 This way, I reached a stage where the correct 0x41 device code, as well as the follow-up command sequence is received, but it forced me to use different pins of the Nucleo board for the return lines (Nucleo-to-Sharp), converting them to 5v and issuing to the 11-pin connector through diodes, to isolate them from inputs (Sharp-to-Nucleo). See schematics. Output and Input stages are time-separated, and during output, input pins on Nucleo needs to be set to PullNone (i.e. high impedance) mode.
 
-The board software is under development, as each command from the SHARP nedds to be processed and data formatted back. 
+The board software is under development, as each command type from the Sharp needs to be processed and data properly formatted back. 
 This is a demo video I made, just to show the emulator processing for example the Sharp FILES command:
 https://youtu.be/5GLLVkL09qo
 
@@ -36,4 +36,4 @@ The SD File System library is a small revision of the version found here: https:
 ## Acknowledgements
 All of this was made possible thanks to the help of the community of Sharp-PC enthusiasts, and in particular to the invaluable and excellent contribution by Remy, author of the https://pockemul.com/ emulator, who reverse engineered the CE-140F protocol.
 
-The MBed community as well was necessary to solve many issues I met along the way.
+The MBed community as well was helpful in solving many issues I met along the way.
