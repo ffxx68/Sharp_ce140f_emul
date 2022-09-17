@@ -9,7 +9,7 @@
 #include "commands.h"
 
 #define DEBUG 1
-#define DEBUG_SIZE 2000 // debug buffer
+#define DEBUG_SIZE 1000 // debug buffer
 #define NIBBLE_DELAY_1 100 // us
 #define NIBBLE_ACK_DELAY 100 // us
 #define BIT_DELAY_1 200 // us
@@ -19,6 +19,7 @@
 #define DATA_WAIT 9000 // us
 #define IN_DATAREADY_TIMEOUT 50000 // us
 #define OUT_NIBBLE_DELAY 5000 // us
+#define DEBUGOUT_TIMEOUT 1 // s (line spool; 80 chars @9600 baud should take 66mm)
 
 // input ports
 DigitalIn   in_BUSY     (PC_0);    
@@ -43,6 +44,7 @@ DigitalOut        infoLed    (LED1); // D13
 
 // timers
 Timer             mainTimer;
+Timeout           debugOutTimeout;
 Timeout           ackOffTimeout;
 Timeout           inDataReadyTimeout;
 
@@ -53,19 +55,24 @@ InterruptIn       btn(USER_BUTTON);
 volatile uint8_t  deviceCode;
 volatile uint8_t  bitCount;
 volatile char     debugBuf[DEBUG_SIZE];
-volatile char     debugLine[80];
 volatile bool     highNibbleIn = false;
 volatile bool     highNibbleOut = false;
 volatile uint8_t  dataInByte;
 volatile uint8_t  dataOutByte;
 volatile uint16_t outDataPointer;
+volatile uint8_t  checksum;
+volatile uint16_t debugPush = 0 ;
+volatile uint16_t debugPull = 0 ;
+
 
 // prototypes
 void startDeviceCodeSeq ( void );
 
+// code
 #ifdef DEBUG
 void debug_log(const char *fmt, ...)
 {
+    char     debugLine[80];
     va_list va;
     va_start (va, fmt);
     sprintf((char*)debugLine,"%d ",mainTimer.read_us());
@@ -103,20 +110,25 @@ void btnRaised()
     ResetACK();
     irq_BUSY.rise(NULL);
     irq_BUSY.fall(NULL);
-    sprintf ( (char*)debugBuf, "Reset\n\r" ); 
+    sprintf ( (char*)debugBuf, "Reset\n" ); 
 }
 
 void SendOutputData ( void ) {
-     uint8_t t;
+    uint8_t t;
     uint32_t nTimeout;
-    
+    Timer testtime;
+    uint32_t t1, t2, t3;
+
     pc.putc('o');
     // set for OUTPUT mode
     in_D_OUT.mode(PullNone);
     in_D_IN.mode(PullNone);
     in_SEL_2.mode(PullNone);
-    in_SEL_1.mode(PullNone);   
+    in_SEL_1.mode(PullNone);  
+    testtime.reset(); 
+    testtime.start(); 
     while ( outDataPointer < outBufPosition ) {
+        testtime.reset();
         // wait for BUSY to go DOWN
         nTimeout = 50000; // max wait
         while ( in_BUSY && (nTimeout--) ) {
@@ -128,9 +140,7 @@ void SendOutputData ( void ) {
             ResetACK();
             break;
         };
-
-        wait_us (OUT_NIBBLE_DELAY);
-
+        t1 = testtime.read_us();
         if ( highNibbleOut ) {
             highNibbleOut = false;
             t = (dataOutByte >> 4);
@@ -138,7 +148,7 @@ void SendOutputData ( void ) {
         } else {
             highNibbleOut = true;
             dataOutByte = outDataBuf[outDataPointer];
-            debug_log ("%d: 0x%02X\n", outDataPointer, dataOutByte);
+            //debug_log ("%d: 0x%02X\n", outDataPointer, dataOutByte);
             t = (dataOutByte & 0x0F);
         }
         
@@ -149,8 +159,7 @@ void SendOutputData ( void ) {
         
         // nibble ready for PC to process
         SetACK();
-        
-        
+        t2 = testtime.read_us();
         // then wait for busy to go UP 
         nTimeout = 50000; // max wait
         while ( !in_BUSY && (nTimeout--) ) {
@@ -165,9 +174,26 @@ void SendOutputData ( void ) {
         // data successfully received by PC
         // acknowledge before next nibble
         ResetACK();
+        t3 = testtime.read_us();
+        if ( !highNibbleOut )  
+            //debug_log ("%d: 0x%02X %d %d %d\n", outDataPointer, dataOutByte, t1, t2, t3);
+            //debug_log ("%d: 0x%02X\n", outDataPointer, dataOutByte);
+
+        // delay
+        wait_us (OUT_NIBBLE_DELAY);
+
     } 
+    // last wait for BUSY to go DOWN
+    nTimeout = 50000; // max wait
+    while ( in_BUSY && (nTimeout--) ) {
+        wait_us (10);
+    }  
+    if (!nTimeout) {
+        pc.putc('x');
+        debug_log ( "PC error 3\n" );
+        ResetACK();
+    };
     debug_log ( "send complete\n" );
-    wait ( IN_DATAREADY_TIMEOUT );
 
     // set for INPUT mode
     in_D_OUT.mode(PullDown);
@@ -194,7 +220,7 @@ void inDataReady ( void ) {
         }   
         debug_log ( "checksum 0x%02X vs 0x%02X\n" ,  checksum, inDataBuf[inBufPosition-1]); 
         if ( checksum == inDataBuf[inBufPosition-1]) {
-            pc.printf(" 0x%02X\n\r", inDataBuf[0]);
+            pc.printf(" 0x%02X\n", inDataBuf[0]);
             debug_log ( "command 0x%02X\n" , inDataBuf[0]); 
             // outDataTicker.detach();   // safety ?       
             // decode and process command
@@ -288,9 +314,9 @@ void bitReady ( void ) {
                 irq_BUSY.fall(&inNibbleAck);
                 irq_BUSY.rise(&inNibbleReady);
                 // check for both BUSY and X_OUT to go down, before starting data receive
-                nTimeout = 100000; // timeout: 1s
+                nTimeout = 10000; // timeout: 1s
                 while ( ( in_X_OUT || in_BUSY ) && (nTimeout--) ) {
-                    wait_us (10);
+                    wait_us (100);
                 }
                 if (nTimeout) {
                     // trigger data handling
@@ -311,14 +337,14 @@ void bitReady ( void ) {
 
 void startDeviceCodeSeq ( void ) {
     wait_us (BIT_DELAY_1);
-    pc.putc('s');
+    pc.putc('\n');pc.putc('s');
     if ( in_D_OUT == 1 ) {
         // Device Code transfer starts with both X_OUT and DOUT high
         // (X_OUT high with DOUT low is for cassette write)
         SetACK();
         bitCount = 0;
         deviceCode = 0;
-        sprintf ( (char*)debugBuf, "Device\n" ); 
+        sprintf ((char*)debugBuf , "\nDevice\n" ); // reset debug buffer 
         wait_us (ACK_DELAY) ;   //?? or, wait AFTER eabling trigger ??
         // serial bit trigger
         irq_BUSY.rise(&bitReady);
@@ -357,7 +383,7 @@ int main(void) {
     
     mainTimer.reset();
     mainTimer.start();
-    
+
     while (1) {
         wait (1); // logic handled with interrupts and timers
     }
