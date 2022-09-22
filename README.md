@@ -18,7 +18,7 @@ but I have in mind to move it to a better looking proto-board build, sooner or l
 
 Interface schematics (subject to further revisions):
 
-![sharp-ce140f-emul](https://user-images.githubusercontent.com/659557/191747166-a117dd97-7f3e-4a3e-a02c-2a77e7dadd89.png)
+![sharp-ce140f-emul](https://user-images.githubusercontent.com/659557/191756292-47d6a18a-8f40-4656-a4f3-c58a2e0ce378.png)
 
 Since the Sharp PC uses a CMOS 5v logic, while the Nucleo board is a 3.3v device, some level-shifting is required in between the two. Nucleo inputs are is 5v-tolerant, so the board inputs could easily accept the Sharp outputs without the need any converter, but the board 3.3v output isn't enough to drive the 5v input on the Sharp. The level converter I choose is one of this type: https://www.sparkfun.com/products/12009 (actually, one of its many clones), with each line being like:
 
