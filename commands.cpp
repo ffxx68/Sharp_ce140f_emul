@@ -17,6 +17,7 @@ FILE    *fp;
 int      fileCount; 
 char     FileName[15];
 int      file_size;
+int      file_pos = 0;
 
 // SD Card (SDFileSystem library)
 SDFileSystem sd(PB_5, PB_4, PB_3, PA_10, "sd"); // mosi, miso, sclk, cs
@@ -206,19 +207,21 @@ void process_LOAD(uint8_t cmd) {
             tmpFile[12] = '\0'; // terminate
             trim (tmpFile); // remove blanks
             sprintf (FileName, "%s%s", SD_HOME, tmpFile);
-            pc.printf(FileName);
+            //pc.printf(FileName);
             debug_log ( "opening <%s>\n", FileName );
-            fp = (FILE *)fopen(FileName, "r"); // this needs to stay open until EOF
+            if ( fp != NULL ) fclose ( fp ); // just in case...
+            fp = fopen(FileName, "r"); // this needs to stay open until EOF
             pc.putc('l');
-            if ( fp != NULL ) {
+            if ( fp == NULL ) {
                 debug_log ( "fopen error\n");
                 pc.putc('x');
                 break;
             }
-            file_size = getFileSize((FILE *)fp);
+            file_size = getFileSize(fp);
             pc.putc('l');
             if ( file_size <= 0 ) {
                 debug_log ( "getFileSize error %d\n", file_size);
+                if ( fp != NULL ) fclose ( fp );
                 pc.putc('x');
                 break;
             }    
@@ -240,12 +243,12 @@ void process_LOAD(uint8_t cmd) {
             pc.putc('0');
             //ba_load.remove(0,0x0f); // remove first byte 'ff'
             //ba_load.chop(1);
-            c = fgetc((FILE *)fp);
+            c = fgetc(fp);
             if ( c != EOF ) {
                 outDataAppend(0x00);
                 debug_log ( "first byte 0x%02X\n", c);
                 outDataAppend(CheckSum(c));
-                outDataAppend(out_checksum);
+                outDataAppend(out_checksum); 
             } else {
                 pc.putc('x');
                 debug_log ( "first byte EOF!");
@@ -305,6 +308,85 @@ void process_LOAD(uint8_t cmd) {
 
 }
 
+void process_SAVE(int cmd) {
+    debug_log ( "SAVE 0x%02X\n", cmd);
+    int c=0;
+    char tmpFile[16];
+
+    switch (cmd) {
+        case 0x10: {
+            pc.putc('s');pc.putc('0');
+            strncpy ( tmpFile, (const char *)(inDataBuf+3), 11 );
+            trim (tmpFile); // remove blanks, for the SD card
+            sprintf (FileName, "%s%s", SD_HOME, tmpFile);
+            debug_log ( "creating <%s>\n", FileName );
+            // create file
+            if ( fp != NULL ) fclose ( fp ); // just in case...
+            fp = fopen(FileName, "w"); // this needs to stay open until SAVE complete
+            if ( fp == NULL ) {
+                debug_log ( "fopen error\n");
+                pc.putc('x');
+                outDataAppend(0xFF); // NOT ok!
+                break;
+            }
+            file_pos = 0;
+            outDataAppend(0x00); // ok, got it
+            break;
+        }
+        case 0x11: { //  data stream
+            pc.putc('s');pc.putc('1');
+            if ( file_pos == 0 ) {
+                // 6 bytes, for file size
+                // 0 : 0x11 (command)
+                // 1 : 00
+                // 2 : Size 1
+                // 3 : Size 2
+                // 4 : Size 3
+                // 5 : checksum 
+                file_size = (int)inDataBuf[2] + (int)(inDataBuf[3]<<8) + (int)(inDataBuf[4]<<16);
+                // debug_log (" 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+                //     inDataBuf[0],inDataBuf[1],inDataBuf[2],
+                //     inDataBuf[3],inDataBuf[4],inDataBuf[5], inDataBuf[6] );
+                debug_log ("size %d\n", file_size);
+                outDataAppend(0x00); // ok, got size
+            } else {
+                // wait_data_function = 0xff; 
+                // handling next data stream chunk
+                int buf_pos = 0;
+                while ( buf_pos < inBufPosition ) {
+                    fputc ( (int)(inDataBuf[buf_pos]), fp) ;
+                    buf_pos ++;
+                    file_pos ++;
+                    debug_log ("position %d\n", file_pos);
+                }
+                if ( file_pos == file_size ) {
+                    fclose (fp); // done
+                    debug_log ("file done\n");
+                }
+                outDataAppend(0x00); // ok, got size     
+            }
+            break;
+        }
+        case 0x16: { // ASCII data stream
+            pc.putc('s');pc.putc('6'); 
+            strncpy ( tmpFile, (const char *)(inDataBuf+3), 12 );
+            debug_log ("<%s>", tmpFile);
+            outDataAppend(0x00);
+
+            // ??? wait_data_function = 0xfe;
+
+            break;
+        }
+        default: {
+            debug_log ("unknown SAVE sub-command\n");
+            pc.putc('x');
+            if ( fp != NULL ) fclose ( fp );
+            break;
+        }
+
+    }
+}
+
 void process_DSKF(void) {
         int diskspace = 20488; // test example
         debug_log ( "DSKF\n" ); 
@@ -339,27 +421,25 @@ void ProcessCommand ( void ) {
         //    case 0x0D: process_COPY(0x0D);break;
     case 0x0E: process_LOAD(0x0E);break;
     case 0x0F: process_LOAD(0x0F);break;
-    /*
+    
     case 0x10: process_SAVE(0x10);break;
     case 0x11: process_SAVE(0x11);break;
-    */
+    case 0x16: process_SAVE(0x16);break;    // SAVE ASCII
+    case 0xFE: process_SAVE(0xfe);break;    // Handle ascii saved data stream
+    case 0xFF: process_SAVE(0xff);break;    // Handle saved data stream
+
     case 0x12: process_LOAD(0x12);break;
         //    case 0x13: process_INPUT(0x13);break;
         //    case 0x14: process_INPUT(0x14);break;
         //    case 0x15: process_PRINT(0x15);break;
-    /*
-    case 0x16: process_SAVE(0x16);break;       // SAVE ASCII
-    */
+
     case 0x17: process_LOAD(0x17);break;
         //    case 0x1A: process_EOF(0x1A);break;
         //    case 0x1C: process_LOC(0x1C);break;
     case 0x1D: process_DSKF(); break;
         //    case 0x1F: process_INPUT(0x1f);break;
         //    case 0x20: process_INPUT(0x20);break;
-    /*
-    case 0xFE: process_SAVE(0xfe);break;    // Handle ascii saved data stream
-    case 0xFF: process_SAVE(0xff);break;    // Handle saved data stream
-    */
+
     default:
         debug_log ( "Unsupported command (yet...)" ); 
         pc.putc('x');
