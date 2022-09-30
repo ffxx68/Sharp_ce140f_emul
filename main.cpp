@@ -6,6 +6,8 @@
 //
 ////////////////////////////////////////////////////////
 #include "mbed.h"
+#include "mbed_mem_trace.h"
+
 #include "commands.h"
 
 #define DEBUG 1
@@ -80,6 +82,19 @@ void debug_log(const char *fmt, ...)
     vsprintf ((char*)debugLine, fmt, va);
     strcat((char*)debugBuf,(char*)debugLine);
     va_end (va);
+}
+void debug_hex(volatile char *buf, volatile uint16_t len)
+{
+    int j;
+    char tmp[15];
+    sprintf((char*)tmp,"%d <",mainTimer.read_us(), len);
+    strcat((char*)debugBuf, tmp);
+    for (j=0;j<len;j++) {
+        sprintf(tmp, "%02X", buf[j]);
+        strcat((char*)debugBuf, tmp);
+    }
+    sprintf((char*)tmp,">\n");
+    strcat((char*)debugBuf, tmp);
 }
 #else
 void debug_log(const char *fmt, ...)
@@ -228,7 +243,8 @@ void inDataReady ( void ) {
             inBufPosition = 0;
             if ( outBufPosition > 0 ) {
                 // data ready for sending 
-                debug_log ( "dataout %u [%02X]\n" , outBufPosition, checksum); 
+                debug_log ( "dataout: %u bytes [chk %02X]\n" , outBufPosition, checksum);
+                debug_hex ( outDataBuf , outBufPosition ) ;
                 outDataPointer = 0;
                 highNibbleOut = false;
                 // stop BUSY triggers

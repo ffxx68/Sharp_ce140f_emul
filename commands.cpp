@@ -43,7 +43,7 @@ void sendString(char* s) {
 }
 
 /*
-QString cleanFileName(QString s) {
+QString formatFileName(QString s) {
     QString r = "X:";
     r = r + s.left(s.indexOf(".")).leftJustified(8,' ',true) + s.mid(s.indexOf(".")).rightJustified(4,' ',true);
     return r;
@@ -60,7 +60,7 @@ void trim(char* s) {
     } while (*s++ = *d++);
 }
 
-char *cleanFileName(char *s) {
+char *formatFileName(char *s) {
     char tmp[15];
     const char *p = strstr(s, ".BAS");
     if (p) {
@@ -70,7 +70,6 @@ char *cleanFileName(char *s) {
         return FileName;
     } else
         return NULL;
-    
 }
 
 void process_FILES_LIST(uint8_t cmd) {
@@ -97,9 +96,8 @@ void process_FILES_LIST(uint8_t cmd) {
     if ((dir = opendir (SD_HOME)) != NULL) { 
         // browse all the files, and stop at 'fileCount'
         // same loop as in process_FILES (which only counts them)
-        // NOTE - We browse the SD-card directory each time
-        // and stop at 'fileCount' (current file to show)
-        // in order to avoid keeping in memory the entire file list
+        // NOTE - We browse the entire SD-card directory each time
+        // so to avoid keeping in memory the entire file list
         // (256 files x 15 = potentially up to 3Kb)
         while ((ent = readdir (dir)) != NULL
             && n_files < 0xFF  // max 255 files 
@@ -115,14 +113,15 @@ void process_FILES_LIST(uint8_t cmd) {
         }
         // 'ent' now points to current file
         // file name for Sharp is expected to be "X:A       .BAS "
-        debug_log("<%s>", ent->d_name);
-        if ( cleanFileName (ent->d_name) != NULL ) {
-            debug_log(" <%s>\n", FileName);
+        debug_log("<%s>\n", ent->d_name);
+        if ( formatFileName (ent->d_name) != NULL ) {
+            debug_log("formatted <%s>\n", FileName);
             // send cleaned file name
             sendString(FileName);
             outDataAppend(out_checksum);
         } else {
             pc.putc('x');
+            outDataAppend(0xFF); // send err back
             debug_log(" ERR clean\n");
         }
         closedir (dir);
@@ -130,7 +129,6 @@ void process_FILES_LIST(uint8_t cmd) {
     }
 
 }
-
 
 void process_FILES(void) {
     
@@ -226,6 +224,7 @@ void process_LOAD(uint8_t cmd) {
                 break;
             }    
             debug_log ( "size %d\n", file_size);
+            file_pos = 0;
             outDataAppend(0x00);
             out_checksum = 0;
             sendString(" "); // ?
@@ -239,11 +238,16 @@ void process_LOAD(uint8_t cmd) {
             */
             break;
         }
-        case 0x17: { // send first byte (Sharp file type BAS / binary)
+        case 0x17: { // send header bytes
+            // header for non-ASCII files is read from 0xFF to 0x0F 
+            // sending several 0x17 commands, one byte each.
+            // For an ASCII file the header is nonexistent
+            // and first 0x17 command will returns a char != 0xFF
             pc.putc('0');
             //ba_load.remove(0,0x0f); // remove first byte 'ff'
             //ba_load.chop(1);
             c = fgetc(fp);
+            file_pos++;
             if ( c != EOF ) {
                 outDataAppend(0x00);
                 debug_log ( "first byte 0x%02X\n", c);
@@ -252,21 +256,23 @@ void process_LOAD(uint8_t cmd) {
             } else {
                 pc.putc('x');
                 debug_log ( "first byte EOF!");
+                outDataAppend(0xff); // error to Sharp
                 if ( fp != NULL ) fclose ( fp );
             }
             //ba_load.remove(0,0x10);
             //wait_data_function = 0xfd;
             break;
         }        
-        case 0x12: { // send next data chunk (BAS, one line)
-            pc.putc('.');
+        case 0x12: { // ASCII data chunk (one line max)
+            pc.putc('-');
             // Envoyer une ligne complete
             // Until end-of-line 0x0D
             // or end-of-file (EOF)
             // Start at 0x10 ??
             outDataAppend(0x00);
             do {
-                c=fgetc((FILE *)fp);
+                c=fgetc(fp);
+                file_pos++;
                 outDataAppend(CheckSum(c));
             } while ((c != EOF) && (c!=0x0d));
             if (c!=0x0d) {
@@ -281,21 +287,24 @@ void process_LOAD(uint8_t cmd) {
             outDataAppend(0x00);
             break;
         }
-        case 0x0f: { // binary ...
-            pc.putc('-');
+        case 0x0f: { // non-ASCII data chunk (256 bytes max)
+            pc.putc('.');
             outDataAppend(0x00);
-            for (int i=0;i<file_size;i++) {
-                c=fgetc((FILE *)fp);
+            do {
+                c=fgetc(fp);
+                file_pos++;
                 outDataAppend(CheckSum(c));
-                if (((i+1)%0x100)==0) {
+                if (file_pos%0x100==0)
                     // break after 256 bytes
-                    outDataAppend(out_checksum);
-                    out_checksum=0;
-                    debug_log ("CHECKSUM\n");
-                }
-            }
-            if ((file_size%0x100)) outDataAppend(out_checksum);
+                    break;
+            } while (c != EOF && file_pos < file_size);
+            debug_log ("block (pos %d)\n", file_pos);
+            outDataAppend(out_checksum);
             outDataAppend(0x00);
+            if ( c==EOF || file_pos == file_size) {
+                debug_log ("EOF (size %d)\n", file_size);
+                if ( fp != NULL ) fclose ( fp );
+            }
             break;
         }
         default: {
