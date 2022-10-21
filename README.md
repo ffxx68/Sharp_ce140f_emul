@@ -8,17 +8,21 @@ This is a demo video I made, just to show the emulator processing for example th
 
 https://youtu.be/5GLLVkL09qo
 
-The working prototype looks like this at present:
+I started from here:
 
-![20220721_090621](https://user-images.githubusercontent.com/659557/180180992-6d9be30f-607c-4927-bcbf-eb3c7a3ea95e.jpg)
+<img src="https://user-images.githubusercontent.com/659557/180180992-6d9be30f-607c-4927-bcbf-eb3c7a3ea95e.jpg" width=50% height=50%>
 
-but I have in mind to move it to a better looking proto-board build, sooner or later, maybe also switching to a slightly more compact (and powerful) STM Nucleo board, like the L432KC for example. This will happen as soon as I reach a sufficiently stable version, mostly on the software side.
+and the prototype presently looks like this:
 
-## Hardware interface notes
+<img src="https://user-images.githubusercontent.com/659557/197160147-e2b9a441-d164-4adc-97ca-d35f92db984d.jpg" width=50% height=50%>
+
+I also have in mind to move to a slightly more compact (and powerful) STM Nucleo board, like the L432KC for example. This will happen as soon as I reach a sufficiently stable version, mostly on the software side.
+
+## Hardware interface notes!
 
 Interface schematics (subject to further revisions):
 
-![sharp-ce140f-emul](https://user-images.githubusercontent.com/659557/191756292-47d6a18a-8f40-4656-a4f3-c58a2e0ce378.png)
+<img src="https://user-images.githubusercontent.com/659557/197160553-7b8a961b-1c60-4c4f-9ef8-4a4cbc0db2b4.png" width=50% height=50%>
 
 Since the Sharp PC uses a CMOS 5v logic, while the Nucleo board is a 3.3v device, some level-shifting is required in between the two. Nucleo inputs are is 5v-tolerant, so the board inputs could easily accept the Sharp outputs without the need any converter, but the board 3.3v output isn't enough to drive the 5v input on the Sharp. The level converter I choose is one of this type: https://www.sparkfun.com/products/12009 (actually, one of its many clones), with each line being like:
 
