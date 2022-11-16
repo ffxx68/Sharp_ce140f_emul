@@ -20,11 +20,11 @@ A move to a more compact (and powerful) L432KC board is in progress. This is how
 
 <img src="https://user-images.githubusercontent.com/659557/202128859-ecb3f3f4-8933-494c-a026-fa893b7ce3a1.jpg" width=100% height=100%>
 
-I also have in mind to move to a slightly more compact (and powerful) STM Nucleo board, like the L432KC for example. This will happen as soon as I reach a sufficiently stable version, mostly on the software side.
+I'm also wondering about the realization of a custom PCB...
 
 ## Hardware interface notes!
 
-Interface schematics (subject to further revisions):
+Interface schematics (this one is the pinout of the L053R8 board):
 
 <img src="https://user-images.githubusercontent.com/659557/197160553-7b8a961b-1c60-4c4f-9ef8-4a4cbc0db2b4.png" width=100% height=100%>
 
