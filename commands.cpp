@@ -1,58 +1,78 @@
 #include "commands.h"
 #include "SDFileSystem.h"
 
+#define ERR_PRINTOUT(x) debug_log(x); pc.printf(x)
+#define ERR_SD_CARD_NOT_PRESENT "SD Card not present!\n"
+
 // from other modules
 extern void debug_log(const char *fmt, ...);
+extern void debug_hex(volatile uint8_t *buf, volatile uint16_t len);
+
 extern RawSerial         pc;
+extern volatile uint16_t outDataGetPosition;
 
-// shared with different threads
-volatile char     inDataBuf[BUF_SIZE];
-volatile char     outDataBuf[BUF_SIZE];
-volatile uint16_t inBufPosition;
-volatile uint16_t outBufPosition;
+// shared over different threads
+volatile uint8_t     inDataBuf[BUF_SIZE];
+volatile uint8_t     outDataBuf[BUF_SIZE];
+volatile uint16_t    inBufPosition;
+volatile uint16_t    outDataPutPosition;
+volatile bool        cmdComplete;
 
-// local
+// locals
 uint8_t  out_checksum = 0;
 FILE    *fp;
 int      fileCount; 
-char     FileName[15];
+uint8_t  FileName[15];
 int      file_size;
 int      file_pos = 0;
 
 // SD Card (SDFileSystem library)
+#if defined TARGET_NUCLEO_L053R8
+DigitalIn    sdmiso(PB_4);
 SDFileSystem sd(PB_5, PB_4, PB_3, PA_10, "sd"); // mosi, miso, sclk, cs
+#endif
+#if defined TARGET_NUCLEO_L432KC
+DigitalIn    sdmiso(PA_6);
+SDFileSystem sd(PA_7, PA_6, PA_5, PB_5, "sd"); // mosi, miso, sclk, cs
+#endif
 
-char CheckSum(char b) {
+uint8_t CheckSum(uint8_t b) {
     out_checksum = (out_checksum + b) & 0xff;
     return b;
 }
 
-void outDataAppend(char b) {
-    // NB in case we're going to implement a circular output buffer...
-    //    I expect functions appending data to be faster than the
-    //    consumer (outNibbleSend, increasing outDataPointer every about 10 ms).
-    //    We should wait here, when outBufPosition reaches outDataPointer,
-    //    for outDataPointer to increase again
-    outDataBuf[ outBufPosition++ ] = b;
+#ifdef ASYNCHOUT
+void outDataAppend(uint8_t b) {
+    if ( (outDataPutPosition++) == BUF_SIZE ) {
+        // buffer full - hold until the spooler has reached buffer end
+        // (a timeout should be added! in case the spooler hangs...)
+        while ( outDataGetPosition < outDataPutPosition ) 
+            wait(.1); // wait
+        // spool complete - reset buffer positions
+        outDataPutPosition = 0;
+        outDataGetPosition = 0;
+    }
+    // ok - add byte to send
+    outDataBuf[ outDataPutPosition ] = b;
 }
+#else
+void outDataAppend(uint8_t b) {
+
+    // Should check for buffer full!!
+    outDataBuf[ outDataPutPosition ++ ] = b;
+        
+}
+#endif
 
 void sendString(char* s) {
-    for (int i=0;i<strlen(s);i++) {
+    for (int i=0;i<strlen((char*)s);i++) {
         outDataAppend(CheckSum(s[i]));
     }
 }
 
-/*
-QString formatFileName(QString s) {
-    QString r = "X:";
-    r = r + s.left(s.indexOf(".")).leftJustified(8,' ',true) + s.mid(s.indexOf(".")).rightJustified(4,' ',true);
-    return r;
-}
-*/
-
 // in-place whitespace removal
-void trim(char* s) {
-    char* d = s;
+void trim(uint8_t* s) {
+    uint8_t* d = s;
     do {
         while (*d == ' ') {
             ++d;
@@ -60,13 +80,13 @@ void trim(char* s) {
     } while (*s++ = *d++);
 }
 
-char *formatFileName(char *s) {
-    char tmp[15];
+uint8_t *formatFileName(char *s) {
+    uint8_t tmp[15];
     const char *p = strstr(s, ".BAS");
     if (p) {
-        strncpy ( tmp, (const char*)s, (p-s));
+        strncpy ((char*)tmp, (const char*)s, (p-s));
         trim(tmp); // should not be necessary... files are stored on SD without blanks
-        sprintf ( FileName, "X:%-8s.BAS ", tmp ); // '%-8s' pads to 8 blanks
+        sprintf ((char*)FileName, "X:%-8s.BAS ", tmp ); // '%-8s' pads to 8 blanks
         return FileName;
     } else
         return NULL;
@@ -77,12 +97,18 @@ void process_FILES_LIST(uint8_t cmd) {
     struct dirent* ent;
     DIR *dir;
     int n_files = -1;
-    char *ext_pos;
+    uint8_t *ext_pos;
 
-    pc.putc('l');pc.putc(0x30+cmd);pc.putc('\n');
+    pc.putc('f');pc.putc(0x30+cmd);pc.putc('\n');
     debug_log ("FILES_LIST 0x%02X\n", cmd);
     outDataAppend(0x00);
     out_checksum=0;
+    if ( sdmiso == 0 ) {
+        ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
+        outDataAppend(0xFF); // returning an error to Sharp?
+        outDataAppend(out_checksum);
+        return;
+    }
 
     switch (cmd) {
     case 0:
@@ -104,7 +130,7 @@ void process_FILES_LIST(uint8_t cmd) {
             ) { 
             //debug_log("<%s>\n", ent->d_name);
             // ignore files other than BASIC (for the timebeing...),
-            if ( (ext_pos = strstr (ent->d_name, ".BAS")) != 0 ) {
+            if ( (ext_pos = (uint8_t *)strstr (ent->d_name, ".BAS")) != 0 ) {
                 n_files++;
                 //debug_log("BAS %d\n", n_files);
             }
@@ -117,17 +143,15 @@ void process_FILES_LIST(uint8_t cmd) {
         if ( formatFileName (ent->d_name) != NULL ) {
             debug_log("formatted <%s>\n", FileName);
             // send cleaned file name
-            sendString(FileName);
+            sendString((char*)FileName);
             outDataAppend(out_checksum);
         } else {
             pc.putc('x');
             outDataAppend(0xFF); // send err back
-            debug_log(" ERR clean\n");
+            ERR_PRINTOUT(" ERR clean\n");
         }
         closedir (dir);
-
     }
-
 }
 
 void process_FILES(void) {
@@ -135,15 +159,22 @@ void process_FILES(void) {
     struct dirent* ent;
     DIR *dir;
     int n_files = 0x00;
-    char *ext_pos;
+    uint8_t *ext_pos;
     
     debug_log ( "FILES\n" ); 
     outDataAppend(CheckSum(0x00));
+    if ( sdmiso == 0 ) {
+        pc.putc('x');
+        ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
+        outDataAppend(CheckSum(0x00)); // no files
+        outDataAppend(out_checksum);
+        return;
+    }
     // Send nb files, from specified dir (with wildcards)
     /* 
     QString s ="";
     for (int i =3;i< 15;i++) {
-        s.append(QChar(data.at(i)));
+        s.append(Quint8_t(data.at(i)));
     }
     //    s="*.BAS"; 
     fileList = directory.entryList( QStringList() << s.replace(" ",""),QDir::Files);
@@ -156,26 +187,24 @@ void process_FILES(void) {
             && n_files < 0xFF ) { // max 255 files
             //debug_log("<%s>\n", ent->d_name);
             // ignore files other than BASIC (for the timebeing...)
-            if ( (ext_pos = strstr (ent->d_name, ".BAS")) != 0 ) 
+            if ( (ext_pos = (uint8_t *)strstr (ent->d_name, ".BAS")) != 0 ) 
                 n_files++; 
         }
         closedir (dir);
         fileCount = -1;
         if ( n_files > 255 ){
-            pc.putc('x');
-            pc.printf("Number of files greater than 255\n");
+            ERR_PRINTOUT("Number of files greater than 255!\n");
             outDataAppend(0x00);
         } else {
             debug_log("%d files\n", n_files);
             outDataAppend(CheckSum(n_files));
-            outDataAppend(out_checksum);
         }
     } else {
         // could not open directory
-        pc.putc('x');
-        pc.printf("Could not open SD directory\n");
+        ERR_PRINTOUT("Could not open SD home directory!\n");
         outDataAppend(0x00);
     }
+    outDataAppend(out_checksum);
 }
 
 int getFileSize(FILE *fp) {
@@ -188,37 +217,48 @@ int getFileSize(FILE *fp) {
 void process_LOAD(uint8_t cmd) {
     debug_log ( "LOAD 0x%02X\n", cmd); 
     int c=0;
-    char tmpFile[16];
+    uint8_t tmpFile[16];
+
+    out_checksum = 0;
+    if ( sdmiso == 0 ) {
+        ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
+        outDataAppend(0x00); 
+        sendString(" "); // ?
+        outDataAppend(0x00);
+        outDataAppend(0x00); 
+        outDataAppend(0x00); // 0-size file
+        outDataAppend(out_checksum);
+        return;
+    }
     switch (cmd) {
         case 0x0E:  { // open file and send file size
             pc.putc('l');
             /*
             for (int i=3;i<15;i++) {
-                s.append(QChar(data.at(i)));
+                s.append(Quint8_t(data.at(i)));
             }
             file_load.setFileName(s);
             if (!file_load.open(QIODevice::ReadOnly)) {
                 emit msgError(tr("ERROR opening file : %1").arg(s));
             }
             */
-            strncpy ( tmpFile, (const char *)(inDataBuf+3), 12 );
+            strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12);
             tmpFile[12] = '\0'; // terminate
             trim (tmpFile); // remove blanks
-            sprintf (FileName, "%s%s", SD_HOME, tmpFile);
+            sprintf ((char*)FileName, "%s%s", SD_HOME, tmpFile);
             //pc.printf(FileName);
             debug_log ( "opening <%s>\n", FileName );
             if ( fp != NULL ) fclose ( fp ); // just in case...
-            fp = fopen(FileName, "r"); // this needs to stay open until EOF
+            fp = fopen((char*)FileName, "r"); // this needs to stay open until EOF
             pc.putc('l');
             if ( fp == NULL ) {
-                debug_log ( "fopen error\n");
-                pc.putc('x');
+                ERR_PRINTOUT("fopen error\n");
                 break;
             }
             file_size = getFileSize(fp);
             pc.putc('l');
             if ( file_size <= 0 ) {
-                debug_log ( "getFileSize error %d\n", file_size);
+                ERR_PRINTOUT("getFileSize error\n");
                 if ( fp != NULL ) fclose ( fp );
                 pc.putc('x');
                 break;
@@ -226,23 +266,19 @@ void process_LOAD(uint8_t cmd) {
             debug_log ( "size %d\n", file_size);
             file_pos = 0;
             outDataAppend(0x00);
-            out_checksum = 0;
             sendString(" "); // ?
             // Send file size : 3 bytes (optimistic!) + checksum
             outDataAppend(CheckSum(file_size & 0xff));
             outDataAppend(CheckSum((file_size >> 8) & 0xff));
             outDataAppend(CheckSum((file_size >> 16) & 0xff));
             outDataAppend(out_checksum);
-            /* 
-            ba_load = file_load.readAll();
-            */
             break;
         }
         case 0x17: { // send header bytes
             // header for non-ASCII files is read from 0xFF to 0x0F 
             // sending several 0x17 commands, one byte each.
             // For an ASCII file the header is nonexistent
-            // and first 0x17 command will returns a char != 0xFF
+            // and first 0x17 command will returns a uint8_t != 0xFF
             pc.putc('0');
             //ba_load.remove(0,0x0f); // remove first byte 'ff'
             //ba_load.chop(1);
@@ -254,8 +290,7 @@ void process_LOAD(uint8_t cmd) {
                 outDataAppend(CheckSum(c));
                 outDataAppend(out_checksum); 
             } else {
-                pc.putc('x');
-                debug_log ( "first byte EOF!");
+                ERR_PRINTOUT("fgetc EOF");
                 outDataAppend(0xff); // error to Sharp
                 if ( fp != NULL ) fclose ( fp );
             }
@@ -287,62 +322,62 @@ void process_LOAD(uint8_t cmd) {
             outDataAppend(0x00);
             break;
         }
-        case 0x0f: { // non-ASCII data chunk (256 bytes max)
+        case 0x0f: { // non-ASCII data stream (send all at once!)
             pc.putc('.');
             outDataAppend(0x00);
             do {
                 c=fgetc(fp);
                 file_pos++;
                 outDataAppend(CheckSum(c));
-                if (file_pos%0x100==0)
-                    // break after 256 bytes
-                    break;
-            } while (c != EOF && file_pos < file_size);
-            debug_log ("block (pos %d)\n", file_pos);
+            } while ( c != EOF
+                 && file_pos < file_size );
             outDataAppend(out_checksum);
             outDataAppend(0x00);
-            if ( c==EOF || file_pos == file_size) {
+            if ( c==EOF || file_pos == file_size ) {
                 debug_log ("EOF (size %d)\n", file_size);
                 if ( fp != NULL ) fclose ( fp );
             }
             break;
         }
         default: {
-            debug_log ("unknown LOAD sub-command\n");
-            pc.putc('x');
+            ERR_PRINTOUT("unknown LOAD sub-command\n");
             if ( fp != NULL ) fclose ( fp );
             break;
         }
     }
-
 }
 
 void process_SAVE(int cmd) {
     debug_log ( "SAVE 0x%02X\n", cmd);
     int c=0;
-    char tmpFile[16];
+    uint8_t tmpFile[16];
 
+    out_checksum = 0;
+    if ( sdmiso == 0 ) {
+        ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
+        outDataAppend(0xFF); 
+        return;
+    }
     switch (cmd) {
-        case 0x10: {
+        case 0x10: { // get file name and create file on SD
             pc.putc('s');pc.putc('0');
-            strncpy ( tmpFile, (const char *)(inDataBuf+3), 11 );
+            strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12 );
             trim (tmpFile); // remove blanks, for the SD card
-            sprintf (FileName, "%s%s", SD_HOME, tmpFile);
+            sprintf ((char*)FileName, "%s%s", SD_HOME, tmpFile);
             debug_log ( "creating <%s>\n", FileName );
             // create file
             if ( fp != NULL ) fclose ( fp ); // just in case...
-            fp = fopen(FileName, "w"); // this needs to stay open until SAVE complete
+            fp = fopen((char*)FileName, "w"); // this needs to stay open until SAVE complete
             if ( fp == NULL ) {
-                debug_log ( "fopen error\n");
-                pc.putc('x');
+                ERR_PRINTOUT( "fopen error\n");
                 outDataAppend(0xFF); // NOT ok!
                 break;
             }
             file_pos = 0;
-            outDataAppend(0x00); // ok, got it
+            outDataAppend(0x00); // ok, done
             break;
         }
-        case 0x11: { //  data stream
+        case 0x11: { // get file size
             pc.putc('s');pc.putc('1');
             if ( file_pos == 0 ) {
                 // 6 bytes, for file size
@@ -359,26 +394,32 @@ void process_SAVE(int cmd) {
                 debug_log ("size %d\n", file_size);
                 outDataAppend(0x00); // ok, got size
             } else {
-                // wait_data_function = 0xff; 
-                // handling next data stream chunk
+                // unexpected command 0x11
+                ERR_PRINTOUT("unexpected 0x11 @%d");
+                if (fp != NULL ) fclose (fp);
+                outDataAppend(0xFF); // return with error
+            }
+            break;
+        }
+        case 0xFF: { // save a data chunk (non-ASCII)
                 int buf_pos = 0;
-                while ( buf_pos < inBufPosition ) {
+                debug_log ("inDataBuf size %d\n", inBufPosition);
+                while ( buf_pos < inBufPosition - 2 ) { // last uint8_t is checksum
                     fputc ( (int)(inDataBuf[buf_pos]), fp) ;
                     buf_pos ++;
                     file_pos ++;
-                    debug_log ("position %d\n", file_pos);
                 }
+                debug_log ("file_pos %d file_size %d\n", file_pos, file_size);
                 if ( file_pos == file_size ) {
                     fclose (fp); // done
                     debug_log ("file done\n");
                 }
-                outDataAppend(0x00); // ok, got size     
+                outDataAppend(0x00); // ok
             }
             break;
-        }
         case 0x16: { // ASCII data stream
             pc.putc('s');pc.putc('6'); 
-            strncpy ( tmpFile, (const char *)(inDataBuf+3), 12 );
+            strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12 );
             debug_log ("<%s>", tmpFile);
             outDataAppend(0x00);
 
@@ -387,8 +428,7 @@ void process_SAVE(int cmd) {
             break;
         }
         default: {
-            debug_log ("unknown SAVE sub-command\n");
-            pc.putc('x');
+            ERR_PRINTOUT("unknown SAVE sub-command\n");
             if ( fp != NULL ) fclose ( fp );
             break;
         }
@@ -401,6 +441,7 @@ void process_DSKF(void) {
         debug_log ( "DSKF\n" ); 
         debug_log ( "diskspace %d\n",  diskspace);
 
+        // we should calculate actual disk free space here...
         outDataAppend(CheckSum(0x00));
         outDataAppend(CheckSum(diskspace & 0xff));  // number of bytes 
         outDataAppend(CheckSum((diskspace >> 8) & 0xff));  // number of 256Bytes free sectors
@@ -410,9 +451,8 @@ void process_DSKF(void) {
 
 void ProcessCommand ( void ) {
 
-    out_checksum=0;
-    outBufPosition = 0;
-
+    out_checksum = 0;
+    cmdComplete = false;
     switch (inDataBuf[0]) {
     /*
     case 0x04: process_CLOSE(0);break;
@@ -450,9 +490,10 @@ void ProcessCommand ( void ) {
         //    case 0x20: process_INPUT(0x20);break;
 
     default:
-        debug_log ( "Unsupported command (yet...)" ); 
-        pc.putc('x');
+        ERR_PRINTOUT( "Unsupported command (yet...)\n" ); 
         break;
     }
-        
+
+    // command complete
+    cmdComplete = true;
 }
