@@ -6,7 +6,7 @@
 
 // communication data depth (max file size during LOAD)
 #if defined TARGET_NUCLEO_L432KC
-#define BUF_SIZE 1000
+#define BUF_SIZE 2000
 #endif
 #if defined TARGET_NUCLEO_L053R8
 #define BUF_SIZE 256 

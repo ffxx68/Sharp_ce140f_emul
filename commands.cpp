@@ -7,7 +7,7 @@
 // from other modules
 extern void debug_log(const char *fmt, ...);
 extern void debug_hex(volatile uint8_t *buf, volatile uint16_t len);
-
+extern void debugOutput( void );
 extern RawSerial         pc;
 extern volatile uint16_t outDataGetPosition;
 
@@ -322,22 +322,33 @@ void process_LOAD(uint8_t cmd) {
             outDataAppend(0x00);
             break;
         }
-        case 0x0f: { // non-ASCII data stream (send all at once!)
-            pc.putc('.');
+        case 0x0f: { // non-ASCII data stream (256 bytes chunks?)
+            pc.putc('.'); // debug ONLY!
             outDataAppend(0x00);
+            uint16_t data_start = file_pos;
             do {
                 c=fgetc(fp);
                 file_pos++;
+                //debug_log (" %02X\n", c);
                 outDataAppend(CheckSum(c));
-            } while ( c != EOF
-                 && file_pos < file_size );
+                if (((file_pos-data_start)%0x100)==0) {
+                    outDataAppend(out_checksum);
+                    out_checksum=0;
+                }
+            } while ( c != EOF && file_pos < file_size );
             outDataAppend(out_checksum);
             outDataAppend(0x00);
-            if ( c==EOF || file_pos == file_size ) {
-                debug_log ("EOF (size %d)\n", file_size);
+            if ( c==EOF && file_pos != file_size ) {
+                ERR_PRINTOUT("fgetc error during LOAD");
                 if ( fp != NULL ) fclose ( fp );
+                // how to tell Sharp-PC to stop sending more LOAD commands?
             }
+            if ( file_pos == file_size ) {
+                debug_log ("file complete (file_size %d)\n", file_size);
+                if ( fp != NULL ) fclose ( fp );  
+            } 
             break;
+
         }
         default: {
             ERR_PRINTOUT("unknown LOAD sub-command\n");
@@ -379,6 +390,7 @@ void process_SAVE(int cmd) {
         }
         case 0x11: { // get file size
             pc.putc('s');pc.putc('1');
+            out_checksum = 0;
             if ( file_pos == 0 ) {
                 // 6 bytes, for file size
                 // 0 : 0x11 (command)
@@ -402,7 +414,9 @@ void process_SAVE(int cmd) {
             break;
         }
         case 0xFF: { // save a data chunk (non-ASCII)
+                pc.putc('s');pc.putc('F');
                 int buf_pos = 0;
+                out_checksum = 0;
                 debug_log ("inDataBuf size %d\n", inBufPosition);
                 while ( buf_pos < inBufPosition - 2 ) { // last uint8_t is checksum
                     fputc ( (int)(inDataBuf[buf_pos]), fp) ;
@@ -418,7 +432,7 @@ void process_SAVE(int cmd) {
             }
             break;
         case 0x16: { // ASCII data stream
-            pc.putc('s');pc.putc('6'); 
+            pc.putc('s');pc.putc('6');
             strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12 );
             debug_log ("<%s>", tmpFile);
             outDataAppend(0x00);
@@ -470,25 +484,21 @@ void ProcessCommand ( void ) {
         //    case 0x0D: process_COPY(0x0D);break;
     case 0x0E: process_LOAD(0x0E);break;
     case 0x0F: process_LOAD(0x0F);break;
-    
     case 0x10: process_SAVE(0x10);break;
     case 0x11: process_SAVE(0x11);break;
     case 0x16: process_SAVE(0x16);break;    // SAVE ASCII
     case 0xFE: process_SAVE(0xfe);break;    // Handle ascii saved data stream
     case 0xFF: process_SAVE(0xff);break;    // Handle saved data stream
-
     case 0x12: process_LOAD(0x12);break;
         //    case 0x13: process_INPUT(0x13);break;
         //    case 0x14: process_INPUT(0x14);break;
         //    case 0x15: process_PRINT(0x15);break;
-
     case 0x17: process_LOAD(0x17);break;
         //    case 0x1A: process_EOF(0x1A);break;
         //    case 0x1C: process_LOC(0x1C);break;
     case 0x1D: process_DSKF(); break;
         //    case 0x1F: process_INPUT(0x1f);break;
         //    case 0x20: process_INPUT(0x20);break;
-
     default:
         ERR_PRINTOUT( "Unsupported command (yet...)\n" ); 
         break;

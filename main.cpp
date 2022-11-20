@@ -10,7 +10,7 @@
 #include "commands.h"
 
 #define DEBUG 1
-#define DEBUG_SIZE 1000 // debug buffer
+#define DEBUG_SIZE 10000 // debug buffer
 #define NIBBLE_DELAY_1 100 // us
 #define NIBBLE_ACK_DELAY 100 // us
 #define BIT_DELAY_1 200 // us
@@ -19,7 +19,7 @@
 #define ACK_TIMEOUT 1 // s
 #define DATA_WAIT 9000 // us
 #define IN_DATAREADY_TIMEOUT 50000 // us
-#define OUT_NIBBLE_DELAY 5000 // us
+#define OUT_NIBBLE_DELAY 1000 // us
 
 #if defined TARGET_NUCLEO_L053R8
 // input ports
@@ -272,13 +272,18 @@ void outDataSpooler ( void ) {
 void SendOutputData ( void ) {
     uint8_t t;
     uint32_t nTimeout;
+    float avg_byte_time;
     
     pc.putc('o');
     // set for OUTPUT mode
     in_D_OUT.mode(PullNone);
     in_D_IN.mode(PullNone);
     in_SEL_2.mode(PullNone);
-    in_SEL_1.mode(PullNone);   
+    in_SEL_1.mode(PullNone);  
+    testTimer.reset(); 
+    testTimer.start(); 
+    avg_byte_time = 0;
+    //pc.printf("outDataGetPosition %d outDataPutPosition %d ", outDataGetPosition, outDataPutPosition);
     while ( outDataGetPosition < outDataPutPosition ) { // outDataPointer < outBufPosition
         // wait for BUSY to go DOWN
         nTimeout = 50000; // max wait
@@ -292,7 +297,7 @@ void SendOutputData ( void ) {
             break;
         };
 
-        wait_us (OUT_NIBBLE_DELAY);
+        wait_us (OUT_NIBBLE_DELAY); // ??? really ???
 
         if ( highNibbleOut ) {
             highNibbleOut = false;
@@ -301,16 +306,18 @@ void SendOutputData ( void ) {
         } else {
             highNibbleOut = true;
             dataOutByte = outDataBuf[outDataGetPosition];
-            //debug_log ("%d: 0x%02X\n", outDataGetPosition, dataOutByte);
+            //pc.putc('.');
+            avg_byte_time = avg_byte_time + testTimer.read_us();
+            testTimer.reset(); 
+            //debug_log (" %02X\n", dataOutByte);
             t = (dataOutByte & 0x0F);
         }
-        
         out_SEL_1 = (t&0x01);
         out_SEL_2 = ((t&0x02)>>1);
         out_D_OUT = ((t&0x04)>>2);
         out_D_IN  = ((t&0x08)>>3);
         
-        // nibble ready for PC to process
+        // nibble ready for Sharp-PC to process
         SetACK();
         
         // then wait for busy to go UP 
@@ -329,6 +336,7 @@ void SendOutputData ( void ) {
         ResetACK();
     } 
     debug_log ( "send complete\n" );
+    debug_log ( "average byte timing (us): %f\n",avg_byte_time/outDataPutPosition); 
     wait_us ( IN_DATAREADY_TIMEOUT );
     // set for INPUT mode
     in_D_OUT.mode(PullDown);
@@ -378,8 +386,7 @@ void inDataReady ( void ) {
 #else
             if ( outDataPutPosition > 0 ) {
                 // data ready for sending 
-                debug_log ( "dataout: %u bytes [chk %02X]\n" , outDataPutPosition, checksum);
-                //debug_hex ( outDataBuf , outDataPutPosition ) ;
+                debug_log ( "dataout: %u bytes\n" , outDataPutPosition);
                 // Take control and send back processed data
                 SendOutputData(); 
             } else {
