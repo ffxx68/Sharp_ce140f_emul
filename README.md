@@ -37,11 +37,7 @@ So, I decided to use the level converters only in the Nucleo-to-Sharp direction.
 About power, the Sharp and the Nucleo do not share the 5v power line, just gnd. This is to prevent the relatively low capacity internal coin cells to be drained by the Nucleo board. At present, the board is powered through its USB plug, but I plan to make it battery powered, maybe rechargeable.
 
 ## Software build notes
-<<<<<<< HEAD
 Board firmware is built using the standard methods offered by the online MBed compiler (https://os.mbed.com/), importing this GitHub repository and selecting the NUCLEO-L053R8, or L432KC, depending on the actual target hardware, as the target.
-=======
-Board firmware is built using the standard methods offered by the online MBed compiler (https://os.mbed.com/), importing this GitHub repository and selecting the NUCLEO-L053R8 as the target.
->>>>>>> 8918214a464fd72107811f68c6feb716251aa386
 
 The MBed library included within this repository is the (now formally unsupported) version 2. This choice is imposed by the small footprint it offers, compared to v6 (even with a "bare metal" build profile). If and when I move to a larger board (e.g. a L432KC), I might upgrade to latest versions.
 
@@ -51,10 +47,9 @@ The board software is still under development, as each command from the Sharp (D
 
 ## Acknowledgements
 Remy, author of the https://pockemul.com/ emulator, who reverse engineered the CE-140F protocol.
+
 Walter (http://www.cavefischer.at/spc/index.htm) who helped on the hardwware interface front.
+
 The entire community of Sharp-PC enthusiasts.
-<<<<<<< HEAD
+
 The MBed forums.
-=======
-The MBed forums.
->>>>>>> 8918214a464fd72107811f68c6feb716251aa386
