@@ -6,10 +6,12 @@
 
 // communication data depth (max file size during LOAD)
 #if defined TARGET_NUCLEO_L432KC
-#define BUF_SIZE 2000
+#define OUT_BUF_SIZE 20000
+#define IN_BUF_SIZE 1000
 #endif
 #if defined TARGET_NUCLEO_L053R8
-#define BUF_SIZE 256 
+#define OUT_BUF_SIZE 1000
+#define IN_BUF_SIZE 1000
 #endif
 
 #define SD_HOME "/sd/"

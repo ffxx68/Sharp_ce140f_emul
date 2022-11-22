@@ -3,7 +3,7 @@
 // 
 // Reverse engineering by contact@pockemul.com
 // v1.0  1/6/2022 - adaptation to MBed NUCLEO L053R8
-// v1.1  16/11/2022 - adaptation to MBed NUCLEO L432KC
+// v1.1  21/11/2022 - adaptation to MBed NUCLEO L432KC
 //
 ////////////////////////////////////////////////////////
 #include "mbed.h"
@@ -297,7 +297,7 @@ void SendOutputData ( void ) {
             break;
         };
 
-        wait_us (OUT_NIBBLE_DELAY); // ??? really ???
+        wait_us (OUT_NIBBLE_DELAY); // do we need it ???
 
         if ( highNibbleOut ) {
             highNibbleOut = false;
@@ -317,10 +317,10 @@ void SendOutputData ( void ) {
         out_D_OUT = ((t&0x04)>>2);
         out_D_IN  = ((t&0x08)>>3);
         
-        // nibble ready for Sharp-PC to process
+        // nibble is ready for Sharp-PC to get it
         SetACK();
         
-        // then wait for busy to go UP 
+        // then wait for BUSY to go UP 
         nTimeout = 50000; // max wait
         while ( !in_BUSY && (nTimeout--) ) {
             wait_us (10);

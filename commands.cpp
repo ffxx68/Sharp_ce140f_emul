@@ -12,8 +12,8 @@ extern RawSerial         pc;
 extern volatile uint16_t outDataGetPosition;
 
 // shared over different threads
-volatile uint8_t     inDataBuf[BUF_SIZE];
-volatile uint8_t     outDataBuf[BUF_SIZE];
+volatile uint8_t     inDataBuf[IN_BUF_SIZE];
+volatile uint8_t     outDataBuf[OUT_BUF_SIZE];
 volatile uint16_t    inBufPosition;
 volatile uint16_t    outDataPutPosition;
 volatile bool        cmdComplete;
@@ -43,7 +43,7 @@ uint8_t CheckSum(uint8_t b) {
 
 #ifdef ASYNCHOUT
 void outDataAppend(uint8_t b) {
-    if ( (outDataPutPosition++) == BUF_SIZE ) {
+    if ( (outDataPutPosition++) == OUT_BUF_SIZE ) {
         // buffer full - hold until the spooler has reached buffer end
         // (a timeout should be added! in case the spooler hangs...)
         while ( outDataGetPosition < outDataPutPosition ) 
