@@ -36,6 +36,15 @@ So, I decided to use the level converters only in the Nucleo-to-Sharp direction.
 
 About power, the Sharp and the Nucleo do not share the 5v power line, just gnd. This is to prevent the relatively low capacity internal coin cells to be drained by the Nucleo board. At present, the board is powered through its USB plug, but I plan to make it battery powered, maybe rechargeable.
 
+## Emulation software description
+This emulator tries to respond as closely as possible (given the information we have) to the commands issues by the main Sharp-PC over the 11-pin interface. The low-level protocol is composed of a 1-bit serial "device select" code byte sent from Sharp PC to Disk drive,  followed by two 4-bit nibbles (1 byte) command code, followed in turn by a variable number of bytes, depending on command. The device code invoking the disk drive is 0x41, as said above already.
+
+I won't report here the complete list of disk command codes (refer to code for that). As  a response to eac command, the disk drive should repsond with 1 or more byte which does "make sense" to the Sharp PC receiving them. That's the most tricky part of the reverse engineering stage, as we don't know how to respond to each and every commmand, having figured out only a few of them, until now. E.g. DSKF (free disk space), LOAD (load a BASIC file, from disk to sharp PC), SAVE (store a BASIC program as a file on disk), among them.
+
+After the disk device select (0x41) is acknowledged, emulator software gets the command code and the following bytes and store them internally in the Nocleo board memory. The command code is later decoded and processed accordingly. Results are stored in memory, then sent back to the Sharp PC after processing is complete. For example, during LOAD of a BASIC file is entirely read from the SDcard to memory and only at the end it's sent to the Sharp PC, as this is how it is expected. An AsCII file instead is received in 256-bytes chunks, with each chunk being requested with a new LOAD command. LOAD commands have different command codes in those cases.
+
+The above synchronous (receive-then-send) is made possible becasue of the relatively fast SD response times and large amount of memory in the Nucleo board (for the BASIC LOAD, for example).
+
 ## Software build notes
 Board firmware is built using the standard methods offered by the online MBed compiler (https://os.mbed.com/), importing this GitHub repository and selecting the NUCLEO-L053R8, or L432KC, depending on the actual target hardware, as the target.
 
