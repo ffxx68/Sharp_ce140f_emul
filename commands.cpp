@@ -1,8 +1,7 @@
 #include "commands.h"
 #include "SDFileSystem.h"
+#include <cstdint>
 
-#define ERR_PRINTOUT(x) debug_log(x); pc.printf(x)
-#define ERR_SD_CARD_NOT_PRESENT "SD Card not present!\n"
 
 // from other modules
 extern void debug_log(const char *fmt, ...);
@@ -28,7 +27,8 @@ int      file_pos = 0;
 
 // SD Card (SDFileSystem library)
 #if defined TARGET_NUCLEO_L053R8
-DigitalIn    sdmiso(PB_4);
+//DigitalIn    sdmiso(PB_4);
+uint8_t sdmiso  = 1; // probing pin doesn't work! 
 SDFileSystem sd(PB_5, PB_4, PB_3, PA_10, "sd"); // mosi, miso, sclk, cs
 #endif
 #if defined TARGET_NUCLEO_L432KC
@@ -146,7 +146,6 @@ void process_FILES_LIST(uint8_t cmd) {
             sendString((char*)FileName);
             outDataAppend(out_checksum);
         } else {
-            pc.putc('x');
             outDataAppend(0xFF); // send err back
             ERR_PRINTOUT(" ERR clean\n");
         }
@@ -164,7 +163,6 @@ void process_FILES(void) {
     debug_log ( "FILES\n" ); 
     outDataAppend(CheckSum(0x00));
     if ( sdmiso == 0 ) {
-        pc.putc('x');
         ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
         outDataAppend(CheckSum(0x00)); // no files
         outDataAppend(out_checksum);
@@ -246,17 +244,18 @@ void process_LOAD(uint8_t cmd) {
             tmpFile[12] = '\0'; // terminate
             trim (tmpFile); // remove blanks
             sprintf ((char*)FileName, "%s%s", SD_HOME, tmpFile);
-            //pc.printf(FileName);
+            //pc.printf((char*)FileName);
             debug_log ( "opening <%s>\n", FileName );
             if ( fp != NULL ) fclose ( fp ); // just in case...
             fp = fopen((char*)FileName, "r"); // this needs to stay open until EOF
-            pc.putc('l');
+            pc.putc('l'); // debug
             if ( fp == NULL ) {
                 ERR_PRINTOUT("fopen error\n");
                 break;
             }
+            pc.putc('l'); // debug
             file_size = getFileSize(fp);
-            pc.putc('l');
+            pc.putc('l'); // debug
             if ( file_size <= 0 ) {
                 ERR_PRINTOUT("getFileSize error\n");
                 if ( fp != NULL ) fclose ( fp );
@@ -299,7 +298,7 @@ void process_LOAD(uint8_t cmd) {
             break;
         }        
         case 0x12: { // ASCII data chunk (one line max)
-            pc.putc('-');
+            pc.putc('.');
             // Envoyer une ligne complete
             // Until end-of-line 0x0D
             // or end-of-file (EOF)
@@ -322,8 +321,8 @@ void process_LOAD(uint8_t cmd) {
             outDataAppend(0x00);
             break;
         }
-        case 0x0f: { // non-ASCII data stream (256 bytes chunks?)
-            pc.putc('.'); // debug ONLY!
+        case 0x0f: { // non-ASCII data stream (single chunk)
+            pc.putc('.');
             outDataAppend(0x00);
             uint16_t data_start = file_pos;
             do {
@@ -373,24 +372,17 @@ void process_SAVE(int cmd) {
         case 0x10: { // get file name and create file on SD
             pc.putc('s');pc.putc('0');
             strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12 );
+            tmpFile[12]=0; // terminate string
             trim (tmpFile); // remove blanks, for the SD card
             sprintf ((char*)FileName, "%s%s", SD_HOME, tmpFile);
-            debug_log ( "creating <%s>\n", FileName );
-            // create file
-            if ( fp != NULL ) fclose ( fp ); // just in case...
-            fp = fopen((char*)FileName, "w"); // this needs to stay open until SAVE complete
-            if ( fp == NULL ) {
-                ERR_PRINTOUT( "fopen error\n");
-                outDataAppend(0xFF); // NOT ok!
-                break;
-            }
+            debug_log ("SDcard filename: %s\n", FileName);
             file_pos = 0;
             outDataAppend(0x00); // ok, done
+            //outDataAppend(0x00); // ?? retry ?? (DEBUG; not needed!)
             break;
         }
         case 0x11: { // get file size
             pc.putc('s');pc.putc('1');
-            out_checksum = 0;
             if ( file_pos == 0 ) {
                 // 6 bytes, for file size
                 // 0 : 0x11 (command)
@@ -403,7 +395,7 @@ void process_SAVE(int cmd) {
                 // debug_log (" 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
                 //     inDataBuf[0],inDataBuf[1],inDataBuf[2],
                 //     inDataBuf[3],inDataBuf[4],inDataBuf[5], inDataBuf[6] );
-                debug_log ("size %d\n", file_size);
+                debug_log ("filesize: %d\n", file_size);
                 outDataAppend(0x00); // ok, got size
             } else {
                 // unexpected command 0x11
@@ -416,9 +408,19 @@ void process_SAVE(int cmd) {
         case 0xFF: { // save a data chunk (non-ASCII)
                 pc.putc('s');pc.putc('F');
                 int buf_pos = 0;
-                out_checksum = 0;
                 debug_log ("inDataBuf size %d\n", inBufPosition);
-                while ( buf_pos < inBufPosition - 2 ) { // last uint8_t is checksum
+                debug_log ("creating <%s>\n", FileName );
+                // create (or replace?) file
+                if ( fp != NULL ) fclose ( fp ); // just in case...
+                fp = fopen((char*)FileName, "w"); // this needs to stay open until SAVE complete
+                if ( fp == NULL ) {
+                    ERR_PRINTOUT( "fopen error\n");
+                    outDataAppend(0xFF); // NOT ok!
+                    break;
+                }
+                // store data
+                file_pos = 0;
+                while ( buf_pos < inBufPosition - 2 ) { // last byte is checksum
                     fputc ( (int)(inDataBuf[buf_pos]), fp) ;
                     buf_pos ++;
                     file_pos ++;
@@ -435,6 +437,7 @@ void process_SAVE(int cmd) {
             pc.putc('s');pc.putc('6');
             strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12 );
             debug_log ("<%s>", tmpFile);
+            
             outDataAppend(0x00);
 
             // ??? wait_data_function = 0xfe;
@@ -463,14 +466,21 @@ void process_DSKF(void) {
         outDataAppend(out_checksum);      
 }    
 
+void process_CLOSE( uint8_t file ) {
+        debug_log ( "CLOSE 0x%02X\n",  file);
+        out_checksum = 0;
+        // a CLOSE 0x00 (all files?) is issued also at RUN
+        // ???
+        outDataAppend(CheckSum(0x00));
+}  
+
 void ProcessCommand ( void ) {
 
     out_checksum = 0;
     cmdComplete = false;
     switch (inDataBuf[0]) {
-    /*
+    
     case 0x04: process_CLOSE(0);break;
-    */
     case 0x05: process_FILES();break;
     case 0x06: process_FILES_LIST(0);break;
     case 0x07: process_FILES_LIST(1);break;
@@ -500,7 +510,9 @@ void ProcessCommand ( void ) {
         //    case 0x1F: process_INPUT(0x1f);break;
         //    case 0x20: process_INPUT(0x20);break;
     default:
-        ERR_PRINTOUT( "Unsupported command (yet...)\n" ); 
+        pc.printf(" command 0x%02X - ", inDataBuf[0]);
+        ERR_PRINTOUT( "Unsupported (yet...)\n" ); 
+        outDataAppend(CheckSum(0x00));
         break;
     }
 

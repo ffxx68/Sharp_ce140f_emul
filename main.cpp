@@ -10,7 +10,13 @@
 #include "commands.h"
 
 #define DEBUG 1
+#if defined TARGET_NUCLEO_L432KC
 #define DEBUG_SIZE 10000 // debug buffer
+#endif
+#if defined TARGET_NUCLEO_L053R8
+#define DEBUG_SIZE 1000 // debug buffer
+#endif
+
 #define NIBBLE_DELAY_1 100 // us
 #define NIBBLE_ACK_DELAY 100 // us
 #define BIT_DELAY_1 200 // us
@@ -19,7 +25,7 @@
 #define ACK_TIMEOUT 1 // s
 #define DATA_WAIT 9000 // us
 #define IN_DATAREADY_TIMEOUT 50000 // us
-#define OUT_NIBBLE_DELAY 1000 // us
+#define OUT_NIBBLE_DELAY 50 // us
 
 #if defined TARGET_NUCLEO_L053R8
 // input ports
@@ -80,7 +86,6 @@ RawSerial         pc(USBTX, USBRX); // D0, D1 ?
 
 volatile uint8_t  deviceCode;
 volatile uint8_t  bitCount;
-volatile uint8_t  debugBuf[DEBUG_SIZE];
 volatile bool     highNibbleIn = false;
 volatile bool     highNibbleOut = false;
 volatile uint8_t  dataInByte;
@@ -96,7 +101,19 @@ extern volatile bool cmdComplete;
 void startDeviceCodeSeq ( void );
 
 // code
+void  ResetACK ( void ) {
+    out_ACK = 0; 
+    infoLed = 0;
+}
+void  SetACK ( void ) {
+    out_ACK = 1; 
+    infoLed = 1;
+    // watchdog on ack line high (might lock the Sharp-PC)
+    ackOffTimeout.attach( &ResetACK, ACK_TIMEOUT ); 
+}
+
 #ifdef DEBUG
+volatile uint8_t  debugBuf[DEBUG_SIZE];
 void debug_log(const char *fmt, ...)
 {
     uint8_t     debugLine[80];
@@ -121,35 +138,10 @@ void debug_hex(volatile uint8_t *buf, volatile uint16_t len)
     sprintf(tmp,">\n");
     strcat((char*)debugBuf, tmp);
 }
-#else
-void debug_log(const uint8_t *fmt, ...)
-{
-    return;
-}
-#endif
-
-void  ResetACK ( void ) {
-    out_ACK = 0; 
-    infoLed = 0;
-}
-
-void  SetACK ( void ) {
-    out_ACK = 1; 
-    infoLed = 1;
-    // watchdog on ack line high (might lock the Sharp-PC)
-    ackOffTimeout.attach( &ResetACK, ACK_TIMEOUT ); 
-}
-
-
-void resetDebug ( void) {
-  inBufPosition = 0;
-  debugBuf[inBufPosition] = 0x00;
-}
-
 void debugOutput( void ){
     uint8_t i = 20;
     while (i--) { infoLed =! infoLed; wait_ms(20); }
-    // printout debug buffer
+    // printout debug buffers
     pc.printf ( "%s", (char*)debugBuf );
     // reset status
     ResetACK();
@@ -157,6 +149,12 @@ void debugOutput( void ){
     irq_BUSY.fall(NULL);
     sprintf ( (char*)debugBuf, "ok\n" ); 
 }
+#else
+void debug_log(const uint8_t *fmt, ...)
+{
+    return;
+}
+#endif
 
 #ifdef ASYNCHOUT
 void sendNibble ( void )
@@ -171,8 +169,7 @@ void sendNibble ( void )
     while ( in_BUSY && (nTimeout--) )
         wait_us (100);
     if ( !nTimeout ) {
-        pc.putc('x');
-        debug_log ( "sendNibble ERR 1\n" );
+        ERR_PRINTOUT( "sendNibble ERR 1\n" );
         ResetACK();
         return;
     };
@@ -200,8 +197,7 @@ void sendNibble ( void )
     while ( !in_BUSY && (nTimeout--) )
         wait_us (100);
     if (!nTimeout) {
-        pc.putc('x');
-        debug_log ( "sendNibble ERR 2\n" );
+        ERR_PRINTOUT( "sendNibble ERR 2\n" );
         ResetACK();
         return;
     };
@@ -248,8 +244,7 @@ void outDataSpooler ( void ) {
                 wait_us (100);
             if (!nTimeout) {
                 outDataEnd();
-                pc.putc('x');
-                debug_log ( "outDataSpooler ERR 1\n" );
+                ERR_PRINTOUT( "outDataSpooler ERR 1\n" );
             }
         } else {
             // data stream complete
@@ -260,44 +255,42 @@ void outDataSpooler ( void ) {
             while ( in_BUSY && (nTimeout--) )
                 wait_us (100);
             if (!nTimeout) {
-                pc.putc('x');
-                debug_log ( "outDataSpooler ERR 2\n" );
+                ERR_PRINTOUT( "outDataSpooler ERR 2\n" );
             }
             debug_log ( "send complete\n" );
         } 
     } 
 }
 #else
+
 // Synchronous output data sender 
 void SendOutputData ( void ) {
     uint8_t t;
     uint32_t nTimeout;
-    float avg_byte_time;
     
-    pc.putc('o');
     // set for OUTPUT mode
     in_D_OUT.mode(PullNone);
     in_D_IN.mode(PullNone);
     in_SEL_2.mode(PullNone);
     in_SEL_1.mode(PullNone);  
+
     testTimer.reset(); 
     testTimer.start(); 
-    avg_byte_time = 0;
     //pc.printf("outDataGetPosition %d outDataPutPosition %d ", outDataGetPosition, outDataPutPosition);
     while ( outDataGetPosition < outDataPutPosition ) { // outDataPointer < outBufPosition
+        wait_us (OUT_NIBBLE_DELAY); // here ?
+
         // wait for BUSY to go DOWN
-        nTimeout = 50000; // max wait
+        nTimeout = 10000; // max wait
         while ( in_BUSY && (nTimeout--) ) {
-            wait_us (10);
+            wait_us (100);
         }  
-        if (!nTimeout) {
-            pc.putc('x');
-            debug_log ( "PC error 1\n" );
+        if (nTimeout < 10) {
+            ERR_PRINTOUT("Send error 1\n");
             ResetACK();
             break;
         };
-
-        wait_us (OUT_NIBBLE_DELAY); // do we need it ???
+        //debug_log ( " timeout 1 %d\n", nTimeout );
 
         if ( highNibbleOut ) {
             highNibbleOut = false;
@@ -306,10 +299,8 @@ void SendOutputData ( void ) {
         } else {
             highNibbleOut = true;
             dataOutByte = outDataBuf[outDataGetPosition];
-            //pc.putc('.');
-            avg_byte_time = avg_byte_time + testTimer.read_us();
-            testTimer.reset(); 
-            //debug_log (" %02X\n", dataOutByte);
+            pc.putc('.');
+            //debug_log (" %d: %02X\n", outDataGetPosition, dataOutByte); // debug ONLY (can fill up space)
             t = (dataOutByte & 0x0F);
         }
         out_SEL_1 = (t&0x01);
@@ -321,23 +312,26 @@ void SendOutputData ( void ) {
         SetACK();
         
         // then wait for BUSY to go UP 
-        nTimeout = 50000; // max wait
+        nTimeout = 10000; // max wait
         while ( !in_BUSY && (nTimeout--) ) {
-            wait_us (10);
+            wait_us (100);
         }
-        if (!nTimeout) {
-            pc.putc('x');
-            debug_log ( "PC error 2\n" );
+        if (nTimeout < 10) {
+            ERR_PRINTOUT("Send error 2\n");
             ResetACK();
             break;
         };
+        //debug_log ( " timeout 2 %d\n", nTimeout );
+
         // data successfully received by PC
         // acknowledge before next nibble
         ResetACK();
     } 
+    testTimer.stop();
+    pc.putc('\n');
     debug_log ( "send complete\n" );
-    debug_log ( "average byte timing (us): %f\n",avg_byte_time/outDataPutPosition); 
-    wait_us ( IN_DATAREADY_TIMEOUT );
+    debug_log ( "average byte timing (ms): %.1f\n", testTimer.read_us()/outDataGetPosition/1000.0); 
+    //wait_us ( IN_DATAREADY_TIMEOUT );
     // set for INPUT mode
     in_D_OUT.mode(PullDown);
     in_D_IN.mode(PullDown);
@@ -347,9 +341,11 @@ void SendOutputData ( void ) {
     out_D_IN  = 0;     
     out_SEL_2 = 0;     
     out_SEL_1 = 0;
-
+    irq_BUSY.fall(NULL);
+    irq_BUSY.rise(NULL);
 }
 #endif
+
 
 void inDataReady ( void ) {
     pc.putc('c');
@@ -357,6 +353,7 @@ void inDataReady ( void ) {
     debug_log ( "Processing...\n" ) ;
     if ( inBufPosition > 0 ) {
         debug_log ( "inBufPosition %d\n", inBufPosition) ; 
+        debug_hex ( inDataBuf, (inBufPosition) < (16) ? (inBufPosition) : (16) );
         // Verify checksum
         checksum=0;
         for (int i=0;i<inBufPosition-1;i++) {
@@ -364,7 +361,7 @@ void inDataReady ( void ) {
         }   
         debug_log ( "checksum 0x%02X vs 0x%02X\n" ,  checksum, inDataBuf[inBufPosition-1]); 
         if ( checksum == inDataBuf[inBufPosition-1] ) {
-            pc.printf(" 0x%02X\n", inDataBuf[0]);
+            //pc.printf(" 0x%02X\n", inDataBuf[0]);
             debug_log ( "command 0x%02X\n" , inDataBuf[0]); 
             outDataGetPosition = 0;
             outDataPutPosition = 0;
@@ -386,18 +383,21 @@ void inDataReady ( void ) {
 #else
             if ( outDataPutPosition > 0 ) {
                 // data ready for sending 
-                debug_log ( "dataout: %u bytes\n" , outDataPutPosition);
-                // Take control and send back processed data
+                debug_log ( "out: %u bytes\n" , outDataPutPosition);
+                debug_hex ( outDataBuf, (outDataPutPosition) < (16) ? (outDataPutPosition) : (16) );
+                // Take control and send processed data to Sharp
+                pc.putc('o');
+                if ( inDataBuf[0] = 0x11 ) {
+                    wait_us ( 10000 ); // save needs some time ?
+                }
                 SendOutputData(); 
             } else {
-                pc.putc('x');
-                debug_log ( "Command processing error\n"); 
+                ERR_PRINTOUT("Command processing error\n"); 
                 // should send something back in case of error too?
             }
 #endif
         } else {
-            pc.putc('x');
-            debug_log ( "checksum error\n"); 
+            ERR_PRINTOUT("checksum error\n"); 
             // should send something back in case of error too?
         }
     }
@@ -425,8 +425,7 @@ void inNibbleReady ( void ) {
             //debug_log ( " %01X\n", inDataBuf[inBufPosition] ) ; 
         }
     } else {
-        pc.putc('x');
-        debug_log ( "inNibbleReady out_ACK!=0\n" ) ;
+        ERR_PRINTOUT( "inNibbleReady out_ACK!=0\n" ) ;
     }
 }
 
@@ -437,8 +436,7 @@ void inNibbleAck ( void ) {
         wait_us ( NIBBLE_ACK_DELAY );
         ResetACK();
     } else {
-        pc.putc('x');
-        debug_log ( "inNibbleAck out_ACK!=1\n" ); 
+        ERR_PRINTOUT( "inNibbleAck out_ACK!=1\n" ); 
     }
 }
 
@@ -480,8 +478,7 @@ void bitReady ( void ) {
                     wait_us ( DATA_WAIT );
                     ResetACK();
                 } else {
-                    pc.putc('x');
-                    debug_log ("Timeout!\n\r") ;
+                    ERR_PRINTOUT("bitReady Timeout!\n\r") ;
                 }
             } 
         } else {
@@ -500,7 +497,8 @@ void startDeviceCodeSeq ( void ) {
         SetACK();
         bitCount = 0;
         deviceCode = 0;
-        resetDebug (); 
+        debugBuf[0] = 0;
+        inBufPosition = 0;
         debug_log ("\nDevice\n");
         wait_us (ACK_DELAY) ;   //?? or, wait only AFTER enabling trigger ??
         // serial bit trigger
@@ -520,7 +518,8 @@ int main(void) {
     wait_ms(20);
   }
 
-  resetDebug();
+  debugBuf[0] = 0;
+  inBufPosition = 0;
   user_BTN.rise(&debugOutput);
 
   // default input pull-down

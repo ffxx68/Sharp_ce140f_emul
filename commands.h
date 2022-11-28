@@ -10,9 +10,12 @@
 #define IN_BUF_SIZE 1000
 #endif
 #if defined TARGET_NUCLEO_L053R8
-#define OUT_BUF_SIZE 1000
-#define IN_BUF_SIZE 1000
+#define OUT_BUF_SIZE 256
+#define IN_BUF_SIZE 256
 #endif
+
+#define ERR_PRINTOUT(x) debug_log(x); pc.printf(x)
+#define ERR_SD_CARD_NOT_PRESENT "SD Card not present!\n"
 
 #define SD_HOME "/sd/"
 
