@@ -95,10 +95,12 @@ volatile uint8_t  checksum;
 volatile uint16_t debugPush = 0 ;
 volatile uint16_t debugPull = 0 ;
 
-extern volatile bool cmdComplete;
+extern volatile bool     cmdComplete;
+extern volatile uint8_t  skipDeviceCode;
 
 // prototypes
 void startDeviceCodeSeq ( void );
+void inDataReady ( void );
 
 // code
 void  ResetACK ( void ) {
@@ -263,6 +265,14 @@ void outDataSpooler ( void ) {
 }
 #else
 
+void debugBUSY_rise ( void ) {
+    debug_log ( " BUSY_rise\n" );
+}
+
+void debugBUSY_fall ( void ) {
+    debug_log ( " BUSY_fall\n" );
+}
+
 // Synchronous output data sender 
 void SendOutputData ( void ) {
     uint8_t t;
@@ -274,6 +284,9 @@ void SendOutputData ( void ) {
     in_SEL_2.mode(PullNone);
     in_SEL_1.mode(PullNone);  
 
+    irq_BUSY.rise(&debugBUSY_rise);
+    irq_BUSY.fall(&debugBUSY_fall);
+
     testTimer.reset(); 
     testTimer.start(); 
     //pc.printf("outDataGetPosition %d outDataPutPosition %d ", outDataGetPosition, outDataPutPosition);
@@ -281,16 +294,16 @@ void SendOutputData ( void ) {
         wait_us (OUT_NIBBLE_DELAY); // here ?
 
         // wait for BUSY to go DOWN
-        nTimeout = 10000; // max wait
-        while ( in_BUSY && (nTimeout--) ) {
-            wait_us (100);
+        nTimeout = 500000; // max wait: 5 s
+        while ( in_BUSY!=0 && (nTimeout--)>0 ) {
+            wait_us (10);
         }  
-        if (nTimeout < 10) {
+        if (nTimeout < 1) {
             ERR_PRINTOUT("Send error 1\n");
             ResetACK();
             break;
         };
-        //debug_log ( " timeout 1 %d\n", nTimeout );
+        //debug_log ( " %1X timeout 1 %d\n", (in_BUSY!=0), nTimeout);
 
         if ( highNibbleOut ) {
             highNibbleOut = false;
@@ -299,7 +312,7 @@ void SendOutputData ( void ) {
         } else {
             highNibbleOut = true;
             dataOutByte = outDataBuf[outDataGetPosition];
-            pc.putc('.');
+            //pc.putc('.');
             //debug_log (" %d: %02X\n", outDataGetPosition, dataOutByte); // debug ONLY (can fill up space)
             t = (dataOutByte & 0x0F);
         }
@@ -312,16 +325,16 @@ void SendOutputData ( void ) {
         SetACK();
         
         // then wait for BUSY to go UP 
-        nTimeout = 10000; // max wait
-        while ( !in_BUSY && (nTimeout--) ) {
-            wait_us (100);
-        }
-        if (nTimeout < 10) {
-            ERR_PRINTOUT("Send error 2\n");
+        nTimeout = 500000; // max wait: 5 s
+        while ( in_BUSY==0 && (nTimeout--)>0 ) {
+            wait_us (10);
+        }  
+        if (nTimeout < 1) {
+            ERR_PRINTOUT("Send error 1\n");
             ResetACK();
             break;
         };
-        //debug_log ( " timeout 2 %d\n", nTimeout );
+        //debug_log ( " %1X timeout 2 %d\n", (in_BUSY!=0), nTimeout);
 
         // data successfully received by PC
         // acknowledge before next nibble
@@ -341,68 +354,12 @@ void SendOutputData ( void ) {
     out_D_IN  = 0;     
     out_SEL_2 = 0;     
     out_SEL_1 = 0;
+
     irq_BUSY.fall(NULL);
     irq_BUSY.rise(NULL);
 }
 #endif
 
-
-void inDataReady ( void ) {
-    pc.putc('c');
-    // Command processing starts here ...
-    debug_log ( "Processing...\n" ) ;
-    if ( inBufPosition > 0 ) {
-        debug_log ( "inBufPosition %d\n", inBufPosition) ; 
-        debug_hex ( inDataBuf, (inBufPosition) < (16) ? (inBufPosition) : (16) );
-        // Verify checksum
-        checksum=0;
-        for (int i=0;i<inBufPosition-1;i++) {
-            checksum = (inDataBuf[i]+checksum) & 0xff;
-        }   
-        debug_log ( "checksum 0x%02X vs 0x%02X\n" ,  checksum, inDataBuf[inBufPosition-1]); 
-        if ( checksum == inDataBuf[inBufPosition-1] ) {
-            //pc.printf(" 0x%02X\n", inDataBuf[0]);
-            debug_log ( "command 0x%02X\n" , inDataBuf[0]); 
-            outDataGetPosition = 0;
-            outDataPutPosition = 0;
-            highNibbleOut = false;
-            // stop the BUSY triggers
-            irq_BUSY.fall(NULL);
-            irq_BUSY.rise(NULL);
-            // decode and process command - feeding the output buffer
-            ProcessCommand ();  
-            inBufPosition = 0;
-#ifdef ASYNCHOUT
-            // set lines for OUTPUT
-            in_D_OUT.mode(PullNone);
-            in_D_IN.mode(PullNone);
-            in_SEL_2.mode(PullNone);
-            in_SEL_1.mode(PullNone);  
-            testTimer.start(); 
-            outDataTicker.attach_us ( outDataSpooler, OUT_NIBBLE_DELAY );
-#else
-            if ( outDataPutPosition > 0 ) {
-                // data ready for sending 
-                debug_log ( "out: %u bytes\n" , outDataPutPosition);
-                debug_hex ( outDataBuf, (outDataPutPosition) < (16) ? (outDataPutPosition) : (16) );
-                // Take control and send processed data to Sharp
-                pc.putc('o');
-                if ( inDataBuf[0] = 0x11 ) {
-                    wait_us ( 10000 ); // save needs some time ?
-                }
-                SendOutputData(); 
-            } else {
-                ERR_PRINTOUT("Command processing error\n"); 
-                // should send something back in case of error too?
-            }
-#endif
-        } else {
-            ERR_PRINTOUT("checksum error\n"); 
-            // should send something back in case of error too?
-        }
-    }
-    
-}
 
 void inNibbleReady ( void ) {
     // test lines
@@ -431,12 +388,83 @@ void inNibbleReady ( void ) {
 
 void inNibbleAck ( void ) {
     // test lines
-    //debug_log ( "ack (%01X)\n\r", ( in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3) )) ; 
+    // debug_log ( "ack (%01X)\n\r", ( in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3) )) ; 
     if ( out_ACK == 1 ) {
         wait_us ( NIBBLE_ACK_DELAY );
         ResetACK();
     } else {
         ERR_PRINTOUT( "inNibbleAck out_ACK!=1\n" ); 
+    }
+}
+
+void inDataReady ( void ) {
+    pc.putc('c');
+    // Command processing starts here ...
+    debug_log ( "Processing...\n" ) ;
+    // stop the BUSY triggers
+    irq_BUSY.fall(NULL);
+    irq_BUSY.rise(NULL);
+    if ( inBufPosition > 0 ) {
+        debug_log ( "in: %d bytes (first 40 below)\n", inBufPosition) ; 
+        debug_hex ( inDataBuf, (inBufPosition) < (40) ? (inBufPosition) : (40) );
+        // Verify checksum
+        checksum=0;
+        for (int i=0;i<inBufPosition-1;i++) {
+            checksum = (inDataBuf[i]+checksum) & 0xff;
+        }   
+        debug_log ( "checksum 0x%02X vs 0x%02X\n" ,  checksum, inDataBuf[inBufPosition-1]); 
+        if ( checksum == inDataBuf[inBufPosition-1] ) {
+            //pc.printf(" 0x%02X\n", inDataBuf[0]);
+            debug_log ( "command 0x%02X\n" , inDataBuf[0]); 
+            outDataGetPosition = 0;
+            outDataPutPosition = 0;
+            highNibbleOut = false;
+            
+            // decode and process command - feeding the output buffer
+            ProcessCommand ();  
+            inBufPosition = 0;
+#ifdef ASYNCHOUT
+            // set lines for OUTPUT
+            in_D_OUT.mode(PullNone);
+            in_D_IN.mode(PullNone);
+            in_SEL_2.mode(PullNone);
+            in_SEL_1.mode(PullNone);  
+            testTimer.start(); 
+            outDataTicker.attach_us ( outDataSpooler, OUT_NIBBLE_DELAY );
+#else
+            if ( outDataPutPosition > 0 ) {
+                // data ready for sending 
+                debug_log ( "out: %u bytes (first 40 below)\n" , outDataPutPosition);
+                debug_hex ( outDataBuf, (outDataPutPosition) < (40) ? (outDataPutPosition) : (40) );
+                // Take control and send processed data to Sharp
+                pc.putc('o');
+                SendOutputData(); 
+                // some commands do not have the device-code sequence
+                // so we wait for next expected command directly
+                if  ( skipDeviceCode != 0x00 ) {
+                    pc.putc('n');
+                    //debugOutput();
+                    debug_log ( "next: 0x%02X\n", skipDeviceCode ) ;
+                    inBufPosition = 0;
+                    highNibbleIn = false;
+                    checksum = 0;
+                    // set data handshake triggers on the BUSY line
+                    irq_BUSY.fall(&inNibbleAck);
+                    irq_BUSY.rise(&inNibbleReady);                
+                } else {
+                    irq_BUSY.rise(NULL);
+                    irq_BUSY.fall(NULL);
+                }
+
+            } else {
+                ERR_PRINTOUT("Command processing error\n"); 
+                // should send something back in case of error too?
+            }
+#endif
+        } else {
+            ERR_PRINTOUT("checksum error\n"); 
+            // should send something back in case of error too?
+        }
     }
 }
 

@@ -16,6 +16,7 @@ volatile uint8_t     outDataBuf[OUT_BUF_SIZE];
 volatile uint16_t    inBufPosition;
 volatile uint16_t    outDataPutPosition;
 volatile bool        cmdComplete;
+volatile uint8_t     skipDeviceCode = 0;
 
 // locals
 uint8_t  out_checksum = 0;
@@ -205,6 +206,16 @@ void process_FILES(void) {
     outDataAppend(out_checksum);
 }
 
+bool file_exists (char *filename) {
+    FILE *file;
+    if ((file = fopen(filename, "r")))
+    {
+        fclose(file);
+        return true;
+    }
+    return false;
+}
+
 int getFileSize(FILE *fp) {
     fseek(fp, 0, SEEK_END);
     int size = ftell(fp);
@@ -378,7 +389,6 @@ void process_SAVE(int cmd) {
             debug_log ("SDcard filename: %s\n", FileName);
             file_pos = 0;
             outDataAppend(0x00); // ok, done
-            //outDataAppend(0x00); // ?? retry ?? (DEBUG; not needed!)
             break;
         }
         case 0x11: { // get file size
@@ -397,6 +407,9 @@ void process_SAVE(int cmd) {
                 //     inDataBuf[3],inDataBuf[4],inDataBuf[5], inDataBuf[6] );
                 debug_log ("filesize: %d\n", file_size);
                 outDataAppend(0x00); // ok, got size
+                // next command, without device-code sequence
+                skipDeviceCode = 0xFF;
+
             } else {
                 // unexpected command 0x11
                 ERR_PRINTOUT("unexpected 0x11 @%d");
@@ -411,6 +424,9 @@ void process_SAVE(int cmd) {
                 debug_log ("inDataBuf size %d\n", inBufPosition);
                 debug_log ("creating <%s>\n", FileName );
                 // create (or replace?) file
+                if ( file_exists ( (char*)FileName ) )
+                    // file exists, remove it
+                    remove ( (char*)FileName );
                 if ( fp != NULL ) fclose ( fp ); // just in case...
                 fp = fopen((char*)FileName, "w"); // this needs to stay open until SAVE complete
                 if ( fp == NULL ) {
@@ -420,7 +436,7 @@ void process_SAVE(int cmd) {
                 }
                 // store data
                 file_pos = 0;
-                while ( buf_pos < inBufPosition - 2 ) { // last byte is checksum
+                while ( buf_pos < inBufPosition - 1 ) { // last byte is checksum
                     fputc ( (int)(inDataBuf[buf_pos]), fp) ;
                     buf_pos ++;
                     file_pos ++;
@@ -429,6 +445,9 @@ void process_SAVE(int cmd) {
                 if ( file_pos == file_size ) {
                     fclose (fp); // done
                     debug_log ("file done\n");
+                    skipDeviceCode = 0;
+                } else {
+                    skipDeviceCode = 0xFF; // expected new chunk
                 }
                 outDataAppend(0x00); // ok
             }
@@ -439,9 +458,8 @@ void process_SAVE(int cmd) {
             debug_log ("<%s>", tmpFile);
             
             outDataAppend(0x00);
-
-            // ??? wait_data_function = 0xfe;
-
+            // next command, without device-code sequence
+            skipDeviceCode = 0xFE;
             break;
         }
         default: {
@@ -478,6 +496,15 @@ void ProcessCommand ( void ) {
 
     out_checksum = 0;
     cmdComplete = false;
+
+    // verify the command sequence is correct
+    // for multi-part commands
+    if ( skipDeviceCode!=0 && inDataBuf[0]!=skipDeviceCode ) {
+        ERR_PRINTOUT("unexpected command\n");
+        pc.printf( " 0x%02X vs 0x%02X\n", inDataBuf[0], skipDeviceCode );
+    }
+
+    skipDeviceCode = 0;
     switch (inDataBuf[0]) {
     
     case 0x04: process_CLOSE(0);break;
