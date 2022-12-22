@@ -14,6 +14,7 @@ extern volatile uint16_t outDataGetPosition;
 volatile uint8_t     inDataBuf[IN_BUF_SIZE];
 volatile uint8_t     outDataBuf[OUT_BUF_SIZE];
 volatile uint16_t    inBufPosition;
+volatile uint16_t    inBufStart;
 volatile uint16_t    outDataPutPosition;
 volatile bool        cmdComplete;
 volatile uint8_t     skipDeviceCode = 0;
@@ -34,6 +35,7 @@ SDFileSystem sd(PB_5, PB_4, PB_3, PA_10, "sd"); // mosi, miso, sclk, cs
 #endif
 #if defined TARGET_NUCLEO_L432KC
 DigitalIn    sdmiso(PA_6);
+// NOTE - SB16 and SB18 has to be open (on board back), to use PA5 and PA6
 SDFileSystem sd(PA_7, PA_6, PA_5, PB_5, "sd"); // mosi, miso, sclk, cs
 #endif
 
@@ -59,7 +61,7 @@ void outDataAppend(uint8_t b) {
 #else
 void outDataAppend(uint8_t b) {
 
-    // Should check for buffer full!!
+    // We should check for buffer full!!
     outDataBuf[ outDataPutPosition ++ ] = b;
         
 }
@@ -86,7 +88,7 @@ uint8_t *formatFileName(char *s) {
     const char *p = strstr(s, ".BAS");
     if (p) {
         strncpy ((char*)tmp, (const char*)s, (p-s));
-        trim(tmp); // should not be necessary... files are stored on SD without blanks
+        trim(tmp); // shouldn' be needed... files are stored on SD without blanks
         sprintf ((char*)FileName, "X:%-8s.BAS ", tmp ); // '%-8s' pads to 8 blanks
         return FileName;
     } else
@@ -99,6 +101,7 @@ void process_FILES_LIST(uint8_t cmd) {
     DIR *dir;
     int n_files = -1;
     uint8_t *ext_pos;
+    uint8_t tmp[15];
 
     pc.putc('f');pc.putc(0x30+cmd);pc.putc('\n');
     debug_log ("FILES_LIST 0x%02X\n", cmd);
@@ -139,17 +142,24 @@ void process_FILES_LIST(uint8_t cmd) {
                 break; // this is the BAS file we're looking for
         }
         // 'ent' now points to current file
-        // file name for Sharp is expected to be "X:A       .BAS "
+        // file name expected like "X:A       .BAS "
         debug_log("<%s>\n", ent->d_name);
-        if ( formatFileName (ent->d_name) != NULL ) {
-            debug_log("formatted <%s>\n", FileName);
-            // send cleaned file name
-            sendString((char*)FileName);
-            outDataAppend(out_checksum);
+        strcpy((char*)tmp, ent->d_name);
+        const char *p = strstr(ent->d_name, ".BAS");
+        const char *s = ent->d_name;
+        if (p) {
+            strncpy ((char*)tmp, s, (p-s));
+            tmp[(p-s)] = 0x00;
+            trim(tmp); // shouldn't be needed... files stored on SD without blanks
+            sprintf ((char*)FileName, "X:%-8s.BAS ",(char*)tmp); // '%-8s' pads to 8 blanks
         } else {
             outDataAppend(0xFF); // send err back
             ERR_PRINTOUT(" ERR clean\n");
         }
+        debug_log("formatted <%s>\n", FileName);
+        // send formatted file name
+        sendString((char*)FileName);
+        outDataAppend(out_checksum);
         closedir (dir);
     }
 }
@@ -259,14 +269,11 @@ void process_LOAD(uint8_t cmd) {
             debug_log ( "opening <%s>\n", FileName );
             if ( fp != NULL ) fclose ( fp ); // just in case...
             fp = fopen((char*)FileName, "r"); // this needs to stay open until EOF
-            pc.putc('l'); // debug
             if ( fp == NULL ) {
                 ERR_PRINTOUT("fopen error\n");
                 break;
             }
-            pc.putc('l'); // debug
             file_size = getFileSize(fp);
-            pc.putc('l'); // debug
             if ( file_size <= 0 ) {
                 ERR_PRINTOUT("getFileSize error\n");
                 if ( fp != NULL ) fclose ( fp );
@@ -309,7 +316,7 @@ void process_LOAD(uint8_t cmd) {
             break;
         }        
         case 0x12: { // ASCII data chunk (one line max)
-            pc.putc('.');
+            pc.putc('a');
             // Envoyer une ligne complete
             // Until end-of-line 0x0D
             // or end-of-file (EOF)
@@ -326,8 +333,8 @@ void process_LOAD(uint8_t cmd) {
                     outDataAppend(CheckSum(0x1A));  // 0x1A pour fin de fichier
                     if ( fp != NULL ) fclose ( fp );
                 }
-            }
-            debug_log ("line\n");
+            } else
+                debug_log ("line\n");
             outDataAppend(out_checksum);
             outDataAppend(0x00);
             break;
@@ -368,10 +375,28 @@ void process_LOAD(uint8_t cmd) {
     }
 }
 
+FILE* openWriteFile( void ){
+    // create (or replace?) file
+    debug_log ("creating <%s>\n", FileName );
+    if ( file_exists ( (char*)FileName ) )
+        // file exists, remove it
+        remove ( (char*)FileName );
+    if ( fp != NULL ) fclose ( fp ); // just in case...
+    return fp = fopen((char*)FileName, "w"); // this needs to stay open until SAVE complete
+}
+
+void getFileName( void ) {
+    uint8_t tmpFile[16];
+    strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12 );
+    tmpFile[12]=0; // terminate string
+    trim (tmpFile); // remove blanks, for the SD card
+    sprintf ((char*)FileName, "%s%s", SD_HOME, tmpFile);
+    debug_log ("SDcard filename: %s\n", FileName);
+}
+
 void process_SAVE(int cmd) {
     debug_log ( "SAVE 0x%02X\n", cmd);
     int c=0;
-    uint8_t tmpFile[16];
 
     out_checksum = 0;
     if ( sdmiso == 0 ) {
@@ -380,86 +405,111 @@ void process_SAVE(int cmd) {
         return;
     }
     switch (cmd) {
-        case 0x10: { // get file name and create file on SD
+        case 0x10: { // file name (non-ASCII)
             pc.putc('s');pc.putc('0');
-            strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12 );
-            tmpFile[12]=0; // terminate string
-            trim (tmpFile); // remove blanks, for the SD card
-            sprintf ((char*)FileName, "%s%s", SD_HOME, tmpFile);
-            debug_log ("SDcard filename: %s\n", FileName);
+            getFileName();
             file_pos = 0;
             outDataAppend(0x00); // ok, done
             break;
         }
-        case 0x11: { // get file size
+        case 0x11: { // file size (non-ASCII)
             pc.putc('s');pc.putc('1');
-            if ( file_pos == 0 ) {
-                // 6 bytes, for file size
-                // 0 : 0x11 (command)
-                // 1 : 00
-                // 2 : Size 1
-                // 3 : Size 2
-                // 4 : Size 3
-                // 5 : checksum 
-                file_size = (int)inDataBuf[2] + (int)(inDataBuf[3]<<8) + (int)(inDataBuf[4]<<16);
-                // debug_log (" 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
-                //     inDataBuf[0],inDataBuf[1],inDataBuf[2],
-                //     inDataBuf[3],inDataBuf[4],inDataBuf[5], inDataBuf[6] );
-                debug_log ("filesize: %d\n", file_size);
-                outDataAppend(0x00); // ok, got size
-                // next command, without device-code sequence
-                skipDeviceCode = 0xFF;
-
-            } else {
-                // unexpected command 0x11
+            if ( file_pos != 0 ) {
+                // unexpected 0x11 here
                 ERR_PRINTOUT("unexpected 0x11 @%d");
                 if (fp != NULL ) fclose (fp);
                 outDataAppend(0xFF); // return with error
+                break;
             }
+            // 6 bytes, for file size
+            // 0 : 0x11 (command)
+            // 1 : 00
+            // 2 : Size 1
+            // 3 : Size 2
+            // 4 : Size 3
+            // 5 : checksum 
+            file_size = (int)inDataBuf[2] + (int)(inDataBuf[3]<<8) + (int)(inDataBuf[4]<<16);
+            // debug_log (" 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+            //     inDataBuf[0],inDataBuf[1],inDataBuf[2],
+            //     inDataBuf[3],inDataBuf[4],inDataBuf[5], inDataBuf[6] );
+            debug_log ("filesize: %d\n", file_size);
+            if ( openWriteFile() == NULL ) {
+                ERR_PRINTOUT( "openWriteFile error\n");
+                outDataAppend(0xFF); // NOT ok!
+                break;
+            }
+            outDataAppend(0x00); // ok, got size and file open
+            // next command, without a device-code sequence
+            skipDeviceCode = 0xFF;
             break;
         }
-        case 0xFF: { // save a data chunk (non-ASCII)
-                pc.putc('s');pc.putc('F');
-                int buf_pos = 0;
-                debug_log ("inDataBuf size %d\n", inBufPosition);
-                debug_log ("creating <%s>\n", FileName );
-                // create (or replace?) file
-                if ( file_exists ( (char*)FileName ) )
-                    // file exists, remove it
-                    remove ( (char*)FileName );
-                if ( fp != NULL ) fclose ( fp ); // just in case...
-                fp = fopen((char*)FileName, "w"); // this needs to stay open until SAVE complete
-                if ( fp == NULL ) {
-                    ERR_PRINTOUT( "fopen error\n");
+        case 0xFF: { // save file data block (non-ASCII)
+            pc.putc('.');
+            int buf_pos = 0; // skip first ??? 
+            skipDeviceCode = 0xFF; 
+            if ( fp == NULL ) {
+                    ERR_PRINTOUT( "file not open\n");
                     outDataAppend(0xFF); // NOT ok!
                     break;
-                }
-                // store data
-                file_pos = 0;
-                while ( buf_pos < inBufPosition - 1 ) { // last byte is checksum
-                    fputc ( (int)(inDataBuf[buf_pos]), fp) ;
-                    buf_pos ++;
-                    file_pos ++;
-                }
-                debug_log ("file_pos %d file_size %d\n", file_pos, file_size);
-                if ( file_pos == file_size ) {
-                    fclose (fp); // done
-                    debug_log ("file done\n");
-                    skipDeviceCode = 0;
-                } else {
-                    skipDeviceCode = 0xFF; // expected new chunk
-                }
-                outDataAppend(0x00); // ok
             }
+            debug_log ("inDataBuf size %d\n", inBufPosition);
+            while ( buf_pos < inBufPosition - 1 ) { // last byte is checksum
+                fputc ( (int)(inDataBuf[buf_pos]), fp) ;
+                buf_pos ++;
+                file_pos ++;
+            }
+            debug_log ("file_pos %d file_size %d\n", file_pos, file_size);
+            if ( file_pos == file_size ) {
+                fclose (fp); // done
+                debug_log ("file done\n");
+                skipDeviceCode = 0x00;
+            }
+            outDataAppend(0x00); // ok
             break;
+        }
         case 0x16: { // ASCII data stream
             pc.putc('s');pc.putc('6');
-            strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12 );
-            debug_log ("<%s>", tmpFile);
-            
-            outDataAppend(0x00);
-            // next command, without device-code sequence
+            getFileName();
+            if ( openWriteFile() == NULL ) {
+                ERR_PRINTOUT( "openWriteFile error\n");
+                outDataAppend(0xFF); // NOT ok!
+                break;
+            }
+            outDataAppend(0x00); // ok, file open
+            file_pos = 0;
+            // next command, without a device-code sequence
             skipDeviceCode = 0xFE;
+            break;
+        }
+        case 0xFE: { // ASCII file block (one line, terminated by 0x0D)
+            pc.putc('.');
+            int buf_pos = 0;
+            skipDeviceCode = 0xFE;
+            if ( fp == NULL ) {
+                ERR_PRINTOUT( "file not open\n");
+                outDataAppend(0xFF); // NOT ok!
+                break;
+            }
+            // store one line, including terminating 0x0D 0x0A
+            debug_log ("<%s>\n", inDataBuf);
+            while ( buf_pos < inBufPosition - 1 // last byte is checksum
+                && inDataBuf[buf_pos] != 0x0D 
+                && inDataBuf[buf_pos+1] != 0x0A) { 
+                if ( inDataBuf[buf_pos] == 0x1A ) { // file end, do not store
+                    fclose (fp);
+                    debug_log ("file done\n");
+                    skipDeviceCode = 0x00;
+                } 
+                fputc ( (int)(inDataBuf[buf_pos]), fp) ;
+                buf_pos ++;
+                file_pos ++;
+            }
+            if ( inDataBuf[buf_pos] == 0x0D ) {
+                // we skipped line termination
+                fputc ( (int)(inDataBuf[buf_pos]), fp) ; 
+                fputc ( (int)(inDataBuf[buf_pos+1]), fp) ; 
+            } 
+            outDataAppend(0x00);
             break;
         }
         default: {
@@ -467,7 +517,6 @@ void process_SAVE(int cmd) {
             if ( fp != NULL ) fclose ( fp );
             break;
         }
-
     }
 }
 
@@ -497,16 +546,12 @@ void ProcessCommand ( void ) {
     out_checksum = 0;
     cmdComplete = false;
 
-    // verify the command sequence is correct
-    // for multi-part commands
-    if ( skipDeviceCode!=0 && inDataBuf[0]!=skipDeviceCode ) {
-        ERR_PRINTOUT("unexpected command\n");
-        pc.printf( " 0x%02X vs 0x%02X\n", inDataBuf[0], skipDeviceCode );
-    }
-
+    uint8_t commandCode = inDataBuf[0];
+    if (skipDeviceCode != 0 )
+        commandCode = skipDeviceCode;
     skipDeviceCode = 0;
-    switch (inDataBuf[0]) {
-    
+
+    switch (commandCode) {
     case 0x04: process_CLOSE(0);break;
     case 0x05: process_FILES();break;
     case 0x06: process_FILES_LIST(0);break;

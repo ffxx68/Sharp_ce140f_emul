@@ -343,7 +343,7 @@ void SendOutputData ( void ) {
     testTimer.stop();
     pc.putc('\n');
     debug_log ( "send complete\n" );
-    debug_log ( "average byte timing (ms): %.1f\n", testTimer.read_us()/outDataGetPosition/1000.0); 
+    debug_log ( "avg output timing (ms/byte): %.2f\n", testTimer.read_us()/outDataGetPosition/1000.0); 
     //wait_us ( IN_DATAREADY_TIMEOUT );
     // set for INPUT mode
     in_D_OUT.mode(PullDown);
@@ -360,9 +360,8 @@ void SendOutputData ( void ) {
 }
 #endif
 
-
 void inNibbleReady ( void ) {
-    // test lines
+    // probe input lines and get nibble value
     uint8_t inNibble = ( in_SEL_1 + (in_SEL_2<<1) + (in_D_OUT<<2) + (in_D_IN<<3) );
     //debug_log ( "(%d) %01X \n", highNibbleIn, inNibble ) ; 
     if ( out_ACK == 0 ) {
@@ -397,9 +396,16 @@ void inNibbleAck ( void ) {
     }
 }
 
+void SendErrorOut ( void ) {
+    outDataBuf[ 0 ] = 0xFF; // error ?
+    outDataPutPosition = 1;
+    SendOutputData();
+}
+
 void inDataReady ( void ) {
     pc.putc('c');
-    // Command processing starts here ...
+    // receive complete
+    testTimer.stop();
     debug_log ( "Processing...\n" ) ;
     // stop the BUSY triggers
     irq_BUSY.fall(NULL);
@@ -407,6 +413,8 @@ void inDataReady ( void ) {
     if ( inBufPosition > 0 ) {
         debug_log ( "in: %d bytes (first 40 below)\n", inBufPosition) ; 
         debug_hex ( inDataBuf, (inBufPosition) < (40) ? (inBufPosition) : (40) );
+        debug_log ( "avg input timing (ms/byte): %.2f\n", 
+            (testTimer.read_us() - IN_DATAREADY_TIMEOUT) / inBufPosition/1000.0); 
         // Verify checksum
         checksum=0;
         for (int i=0;i<inBufPosition-1;i++) {
@@ -419,7 +427,6 @@ void inDataReady ( void ) {
             outDataGetPosition = 0;
             outDataPutPosition = 0;
             highNibbleOut = false;
-            
             // decode and process command - feeding the output buffer
             ProcessCommand ();  
             inBufPosition = 0;
@@ -440,14 +447,14 @@ void inDataReady ( void ) {
                 pc.putc('o');
                 SendOutputData(); 
                 // some commands do not have the device-code sequence
-                // so we wait for next expected command directly
-                if  ( skipDeviceCode != 0x00 ) {
+                // so we wait for next byte directly
+                if ( skipDeviceCode != 0x00 ) {
                     pc.putc('n');
-                    //debugOutput();
                     debug_log ( "next: 0x%02X\n", skipDeviceCode ) ;
-                    inBufPosition = 0;
                     highNibbleIn = false;
                     checksum = 0;
+                    testTimer.reset();
+                    testTimer.start(); 
                     // set data handshake triggers on the BUSY line
                     irq_BUSY.fall(&inNibbleAck);
                     irq_BUSY.rise(&inNibbleReady);                
@@ -455,15 +462,14 @@ void inDataReady ( void ) {
                     irq_BUSY.rise(NULL);
                     irq_BUSY.fall(NULL);
                 }
-
             } else {
                 ERR_PRINTOUT("Command processing error\n"); 
-                // should send something back in case of error too?
+                SendErrorOut();
             }
 #endif
         } else {
             ERR_PRINTOUT("checksum error\n"); 
-            // should send something back in case of error too?
+            SendErrorOut();
         }
     }
 }
@@ -492,9 +498,12 @@ void bitReady ( void ) {
                 inBufPosition = 0;
                 highNibbleIn = false;
                 checksum = 0;
+                skipDeviceCode = 0;
                 // set data handshake triggers on the BUSY line
                 irq_BUSY.fall(&inNibbleAck);
                 irq_BUSY.rise(&inNibbleReady);
+                testTimer.reset();
+                testTimer.start();
                 // check for both BUSY and X_OUT to go down, before starting data receive
                 nTimeout = 10000; // timeout: 1s
                 while ( ( in_X_OUT || in_BUSY ) && (nTimeout--) ) {
