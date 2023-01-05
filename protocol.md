@@ -158,6 +158,8 @@ Another example of multi-chuck data exchange is the SAVE command, which would ex
 
 But, with reverse engineering of several commands to be implemented yet, more "surprises" are expected to come...
 
+_Note_ - Present synchronous, sequential approach (receive-process-send) is made possible because of the relatively quick SD response times and the large amount of memory, especially in the L432KC Nucleo board. Infact, with the L053R8 board, which has a smaller memory, the file size during LOAD is limited. A more sophisticated, asynchronous, approach could be possible in principle, to overcome the memory limitations, for example with two threads (read and send) and a ring buffer in between, but the development is way more complex, both to write and to test - worth it?
+
 # APPENDIX 1 - Excerpt from the CE 140 F (Disk drive) Service Manual
 
 ## 6.4 PROTOCOL
