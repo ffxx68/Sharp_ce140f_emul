@@ -39,9 +39,9 @@ About power, the Sharp and the Nucleo do not share the 5v power line, just gnd. 
 ## Emulation software description
 This emulator tries to respond as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the main Sharp-PC (I'll call it "PC" in the following), over the 11-pin interface. Unfortunately, the Official Service manual doesn't go beyond the low-level hardware description, so I tried summarizing in another document what we've found so far about the entire protocol:
 
-https://github.com/ffxx68/Sharp_ce140f_emul/blob/main/protocol.md
+[Protocol](https://github.com/ffxx68/Sharp_ce140f_emul/blob/main/protocol.md)
 
-Being this a work in progress, I recommend using the source code as the ultimate reference, though.
+Being this a work in progress, I anyway recommend using the source code as the ultimate reference, though.
 
 ## Software build notes
 Board firmware is built using the standard methods offered by the online MBed Keil Studio IDE - https://studio.keil.arm.com/ - importing this GitHub repository and selecting the NUCLEO-L053R8, or NUCLEO-L432KC, depending on the actual target hardware, as the target. Refer to MBed Keil Studio documentation for details about how to proceed.
