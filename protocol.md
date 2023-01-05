@@ -1,6 +1,6 @@
 # CE 140 F Communication Protocol
 
-Referring to the Appendix 1 (excerpted from the CE 140 F Service Manual), and to the excellent reverse-engineering job made by Pockemul (), using his real device and a basic logic analyzer, I can summarize the protocol as being composed basically of three layers:
+Referring to the Appendix 1 (excerpted from the CE 140 F Service Manual), and to the excellent reverse-engineering job made by [Pockemul](https://pockemul.com/), using his real device and a basic logic analyzer, I can summarize the protocol as being composed basically of three layers:
 
 1. device selection 
 2. byte string receiving and sending
