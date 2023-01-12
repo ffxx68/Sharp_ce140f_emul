@@ -4,15 +4,15 @@ Sharp CE-140F disk drive emulator with an ST-Nucleo board
 This is an attempt of emulating the Sharp CE-140F disk drive with an ST-Nucleo board, a L053R8 in this implementation, 
 attached to a Sharp Pocket Computer (PC-1403) through the Sharp proprietary 11-pin interface. 
 
-This is a demo video I made, just to show the emulator processing for example the Sharp FILES command:
+Here's a link to a demo video, using the LOAD and SAVE commands on the Sharp PC:
 
-https://youtu.be/5GLLVkL09qo
+[LOAD or SAVE demo](https://youtu.be/YH5hvxJgKFs)
 
-I started from here:
+I started with this prototype (Apr '22) on the Nucleo L053R8 board:
 
 <img src="https://user-images.githubusercontent.com/659557/180180992-6d9be30f-607c-4927-bcbf-eb3c7a3ea95e.jpg" width=100% height=100%>
 
-and a proto-board version, still based on the L053R8, presently looks like this:
+which I later moved to a proto-board version:
 
 <img src="https://user-images.githubusercontent.com/659557/197160147-e2b9a441-d164-4adc-97ca-d35f92db984d.jpg" width=100% height=100%>
 
@@ -20,7 +20,7 @@ A move to a more compact (and powerful) L432KC board is in progress. This is how
 
 <img src="https://user-images.githubusercontent.com/659557/202128859-ecb3f3f4-8933-494c-a026-fa893b7ce3a1.jpg" width=100% height=100%>
 
-I'm also wondering about the realization of a custom PCB...
+while I'm wondering about the realization of a custom PCB...
 
 ## Hardware interface notes!
 
