@@ -10,14 +10,23 @@
 #include "commands.h"
 
 #define DEBUG 1
+
 #if defined TARGET_NUCLEO_L432KC
 #define DEBUG_SIZE 10000 // debug buffer
+#define DEBUG_TIMEOUT 3000 // ms
 #endif
 #if defined TARGET_NUCLEO_L053R8
 #define DEBUG_SIZE 1000 // debug buffer
+#define DEBUG_TIMEOUT 2000 // ms
 #endif
+// about DEBUG_TIMEOUT:
+// should be fast enough to keep buffer empty,
+// but slow enough to allow for serial printf to complete
+// (1000 chars @ 9600 bps => about 0.9 s)
+// Possibily, increase serial speed...
 
 #define NIBBLE_DELAY_1 100 // us
+#define NIBBLE_DELAY_2 1000 // us
 #define NIBBLE_ACK_DELAY 100 // us
 #define BIT_DELAY_1 200 // us
 #define BIT_DELAY_2 2000 // us
@@ -73,11 +82,11 @@ InterruptIn       user_BTN    (PB_4);
 
 // timers
 Timer             mainTimer;
-Timeout           debugOutTimeout;
 Timeout           ackOffTimeout;
 Timeout           inDataReadyTimeout;
 Timer             testTimer;
-#ifdef ASYNCHOUT
+Ticker            debugOutTimeout;
+#ifdef ASYNCHOUT // under development ...
 Ticker            outDataTicker;       
 #endif     
 
@@ -92,8 +101,7 @@ volatile uint8_t  dataInByte;
 volatile uint8_t  dataOutByte;
 volatile uint16_t outDataGetPosition;
 volatile uint8_t  checksum;
-volatile uint16_t debugPush = 0 ;
-volatile uint16_t debugPull = 0 ;
+volatile uint16_t debuglock = 0 ;
 
 extern volatile bool     cmdComplete;
 extern volatile uint8_t  skipDeviceCode;
@@ -120,17 +128,21 @@ void debug_log(const char *fmt, ...)
 {
     uint8_t     debugLine[80];
     va_list va;
+    debuglock = 1;
     va_start (va, fmt);
     sprintf((char*)debugLine,"%d ",mainTimer.read_us());
     strcat((char*)debugBuf,(char*)debugLine);
     vsprintf ((char*)debugLine, fmt, va);
     strcat((char*)debugBuf,(char*)debugLine);
     va_end (va);
+    debuglock = 0;
 }
+
 void debug_hex(volatile uint8_t *buf, volatile uint16_t len)
 {
     int j;
     char tmp[15];
+    debuglock = 1;
     sprintf(tmp,"%d <",mainTimer.read_us(), len);
     strcat((char*)debugBuf, tmp);
     for (j=0;j<len;j++) {
@@ -139,8 +151,26 @@ void debug_hex(volatile uint8_t *buf, volatile uint16_t len)
     }
     sprintf(tmp,">\n");
     strcat((char*)debugBuf, tmp);
+    debuglock = 0;
 }
-void debugOutput( void ){
+
+// dumping periodically, by a timer-issued thread,
+// in order to de-sync from the main functions.
+// Much cleaner solution would be to use a circular buffer,
+// but it's complicated to format-write into it.
+void outDebugDump (void ) {
+    while ( debuglock != 0 ) // semaphore
+        wait_us (100);
+    if ( debugBuf[0]!=0x00 ) {
+        debuglock = 1;
+        pc.printf ( "%s", (char*)debugBuf ); // slow serial comm
+        debugBuf[0]=0x00;
+    }
+    debuglock = 0;
+}
+
+// manually triggered (button push)
+void outDebugDumpManual( void ){
     uint8_t i = 20;
     while (i--) { infoLed =! infoLed; wait_ms(20); }
     // printout debug buffers
@@ -153,6 +183,10 @@ void debugOutput( void ){
 }
 #else
 void debug_log(const uint8_t *fmt, ...)
+{
+    return;
+}
+void debug_hex(volatile uint8_t *buf, volatile uint16_t len)
 {
     return;
 }
@@ -371,7 +405,7 @@ void inNibbleReady ( void ) {
             highNibbleIn = false;
             inDataBuf[inBufPosition] = (inNibble << 4) + inDataBuf[inBufPosition];
             checksum = (inDataBuf[inBufPosition] + checksum) & 0xff;
-            //debug_log(" %u:%02X [%02X]\n", inBufPosition, inDataBuf[inBufPosition], checksum ) ;
+            debug_log(" %u:%02X [%02X]\n", inBufPosition, inDataBuf[inBufPosition], checksum ) ;
             inBufPosition++; // should be circular for safety; may cut off data!
             // Data processing starts after last byte (timeout reset after each byte received) 
             inDataReadyTimeout.attach_us( &inDataReady, IN_DATAREADY_TIMEOUT );
@@ -447,14 +481,16 @@ void inDataReady ( void ) {
                 pc.putc('o');
                 SendOutputData(); 
                 // some commands do not have the device-code sequence
-                // so we wait for next byte directly
+                // so we directly receive next byte 
                 if ( skipDeviceCode != 0x00 ) {
                     pc.putc('n');
                     debug_log ( "next: 0x%02X\n", skipDeviceCode ) ;
+                    inBufPosition = 0;
                     highNibbleIn = false;
                     checksum = 0;
                     testTimer.reset();
                     testTimer.start(); 
+                    wait_us (NIBBLE_DELAY_2) ; // add a delay 
                     // set data handshake triggers on the BUSY line
                     irq_BUSY.fall(&inNibbleAck);
                     irq_BUSY.rise(&inNibbleReady);                
@@ -534,7 +570,7 @@ void startDeviceCodeSeq ( void ) {
         SetACK();
         bitCount = 0;
         deviceCode = 0;
-        debugBuf[0] = 0;
+        //debugBuf[0] = 0;  // with a periodic dump: buffer resets
         inBufPosition = 0;
         debug_log ("\nDevice\n");
         wait_us (ACK_DELAY) ;   //?? or, wait only AFTER enabling trigger ??
@@ -548,7 +584,7 @@ void startDeviceCodeSeq ( void ) {
 int main(void) {
   uint8_t i = 20;
 
-  pc.baud(9600);
+  pc.baud(115200);
   pc.printf("CE140F emulator init\n");
   while (i--) {
     infoLed = !infoLed;
@@ -557,7 +593,10 @@ int main(void) {
 
   debugBuf[0] = 0;
   inBufPosition = 0;
-  user_BTN.rise(&debugOutput);
+#ifdef DEBUG
+  user_BTN.rise(&outDebugDumpManual);
+  debugOutTimeout.attach_us( &outDebugDump, DEBUG_TIMEOUT );
+#endif
 
   // default input pull-down
   in_BUSY.mode(PullDown);

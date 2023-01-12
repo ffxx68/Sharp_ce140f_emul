@@ -34,7 +34,8 @@ uint8_t sdmiso  = 1; // probing pin doesn't work!
 SDFileSystem sd(PB_5, PB_4, PB_3, PA_10, "sd"); // mosi, miso, sclk, cs
 #endif
 #if defined TARGET_NUCLEO_L432KC
-DigitalIn    sdmiso(PA_6);
+//DigitalIn    sdmiso(PA_6);
+uint8_t sdmiso  = 1; // probing pin doesn't work! 
 // NOTE - SB16 and SB18 has to be open (on board back), to use PA5 and PA6
 SDFileSystem sd(PA_7, PA_6, PA_5, PB_5, "sd"); // mosi, miso, sclk, cs
 #endif
@@ -378,11 +379,16 @@ void process_LOAD(uint8_t cmd) {
 FILE* openWriteFile( void ){
     // create (or replace?) file
     debug_log ("creating <%s>\n", FileName );
-    if ( file_exists ( (char*)FileName ) )
+    if ( file_exists ( (char*)FileName ) ) {
         // file exists, remove it
-        remove ( (char*)FileName );
-    if ( fp != NULL ) fclose ( fp ); // just in case...
-    return fp = fopen((char*)FileName, "w"); // this needs to stay open until SAVE complete
+        int r = remove ( (char*)FileName );
+        debug_log ("remove: %d\n", r);
+    }
+    if ( fp != NULL ) {
+        int r = fclose ( fp ); // just in case...
+        debug_log ("fclose: %d\n", r);
+    }
+    return fp = fopen((char*)FileName, "w"); // stay open until command complete
 }
 
 void getFileName( void ) {
@@ -405,9 +411,14 @@ void process_SAVE(int cmd) {
         return;
     }
     switch (cmd) {
-        case 0x10: { // file name (non-ASCII)
+        case 0x10: { // file name : create (or replace)
             pc.putc('s');pc.putc('0');
             getFileName();
+            if ( openWriteFile() == NULL ) {
+                ERR_PRINTOUT( "openWriteFile error\n");
+                outDataAppend(0xFF); // NOT ok!
+                break;
+            }
             file_pos = 0;
             outDataAppend(0x00); // ok, done
             break;
@@ -433,19 +444,22 @@ void process_SAVE(int cmd) {
             //     inDataBuf[0],inDataBuf[1],inDataBuf[2],
             //     inDataBuf[3],inDataBuf[4],inDataBuf[5], inDataBuf[6] );
             debug_log ("filesize: %d\n", file_size);
-            if ( openWriteFile() == NULL ) {
-                ERR_PRINTOUT( "openWriteFile error\n");
-                outDataAppend(0xFF); // NOT ok!
-                break;
-            }
             outDataAppend(0x00); // ok, got size and file open
             // next command, without a device-code sequence
             skipDeviceCode = 0xFF;
             break;
         }
+        case 0x16: { // ASCII data stream
+            pc.putc('s');pc.putc('6');
+            outDataAppend(0x00); // ok, file open
+            file_pos = 0;
+            // next command, without a device-code sequence
+            skipDeviceCode = 0xFE;
+            break;
+        }
         case 0xFF: { // save file data block (non-ASCII)
             pc.putc('.');
-            int buf_pos = 0; // skip first ??? 
+            int buf_pos = 0;
             skipDeviceCode = 0xFF; 
             if ( fp == NULL ) {
                     ERR_PRINTOUT( "file not open\n");
@@ -467,48 +481,27 @@ void process_SAVE(int cmd) {
             outDataAppend(0x00); // ok
             break;
         }
-        case 0x16: { // ASCII data stream
-            pc.putc('s');pc.putc('6');
-            getFileName();
-            if ( openWriteFile() == NULL ) {
-                ERR_PRINTOUT( "openWriteFile error\n");
-                outDataAppend(0xFF); // NOT ok!
-                break;
-            }
-            outDataAppend(0x00); // ok, file open
-            file_pos = 0;
-            // next command, without a device-code sequence
-            skipDeviceCode = 0xFE;
-            break;
-        }
-        case 0xFE: { // ASCII file block (one line, terminated by 0x0D)
+        
+        case 0xFE: { // ASCII file block (one line)
             pc.putc('.');
             int buf_pos = 0;
-            skipDeviceCode = 0xFE;
             if ( fp == NULL ) {
                 ERR_PRINTOUT( "file not open\n");
                 outDataAppend(0xFF); // NOT ok!
                 break;
             }
-            // store one line, including terminating 0x0D 0x0A
-            debug_log ("<%s>\n", inDataBuf);
-            while ( buf_pos < inBufPosition - 1 // last byte is checksum
-                && inDataBuf[buf_pos] != 0x0D 
-                && inDataBuf[buf_pos+1] != 0x0A) { 
-                if ( inDataBuf[buf_pos] == 0x1A ) { // file end, do not store
-                    fclose (fp);
-                    debug_log ("file done\n");
-                    skipDeviceCode = 0x00;
-                } 
-                fputc ( (int)(inDataBuf[buf_pos]), fp) ;
-                buf_pos ++;
-                file_pos ++;
+            //debug_log ("<%s>\n", inDataBuf);
+            if ( inDataBuf[buf_pos] == 0x1A ) { // file end (to store it as well?)
+                debug_log ("file done\n");
+                fclose (fp);
+            } else {
+                // store one line as is (including line termination 0x0D+0x0A)
+                while ( buf_pos < inBufPosition - 1 ) { // last byte is checksum
+                    fputc ((int)(inDataBuf[buf_pos]), fp) ;
+                    buf_pos ++;
+                    file_pos ++;
+                }
             }
-            if ( inDataBuf[buf_pos] == 0x0D ) {
-                // we skipped line termination
-                fputc ( (int)(inDataBuf[buf_pos]), fp) ; 
-                fputc ( (int)(inDataBuf[buf_pos+1]), fp) ; 
-            } 
             outDataAppend(0x00);
             break;
         }
