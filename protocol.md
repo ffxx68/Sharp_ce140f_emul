@@ -10,7 +10,7 @@ The CE 140 F Service Manual unfortunately describes only the hardware level of l
 
 So, I will try to add some information here, with respect to what is found in the Service Manual. 
 
-I made use of the MBed-OS GPIO and Timer triggers, instead of making a pure procedural processing of signals, as I believe that's closer to an hardware emulation. It's just a "style" chiuice, though. 
+I will refer to the code of my implementation in the following, based upon the MBed-OS platform for Nucleo boards. Here, I made large use GPIO- and Timer-triggered routines, instead of making a pure procedural processing of signals, as I believe that's closer to an hardware emulation. 
 
 ## 1 - Device selection 
 
@@ -100,7 +100,7 @@ _Note_ - the GPIO input lines are set as “pull none” (i.e. high impedance) d
 
 The `ProcessCommand` function is implemented in _commands.cpp_. The first byte in `inDataBuf[]` is checked and the logic corresponding to each command is invoked. 
 
-Below the list of codes, with functions corresponding to each command:
+Below the list of codes - thanks to Pockemul! - with functions corresponding to each command:
 
 ```C
 case 0x04: process_CLOSE(0);break;
