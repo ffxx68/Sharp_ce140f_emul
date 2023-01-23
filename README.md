@@ -24,9 +24,9 @@ while I'm wondering about the realization of a custom PCB...
 
 ## Hardware interface notes!
 
-Interface schematics (this one is the pinout of the L053R8 board):
+Interface schematics (find complete KiCad project in the repo):
 
-<img src="https://user-images.githubusercontent.com/659557/197160553-7b8a961b-1c60-4c4f-9ef8-4a4cbc0db2b4.png" width=100% height=100%>
+![image](https://user-images.githubusercontent.com/659557/213223743-f2838cbe-25bf-4762-9deb-3f7cca15b276.png)
 
 Since the Sharp PC uses a CMOS 5v logic, while the Nucleo board is a 3.3v device, some level-shifting is required in between the two. Nucleo inputs are is 5v-tolerant, so the board inputs could easily accept the Sharp outputs without the need any converter, but the board 3.3v output isn't enough to drive the 5v input on the Sharp. The level converter I choose is one of this type: https://www.sparkfun.com/products/12009 (actually, one of its many clones).
 
