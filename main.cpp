@@ -12,8 +12,11 @@
 #define DEBUG 1
 
 #if defined TARGET_NUCLEO_L432KC
+#define BREADBOARD // prototype
+//#define PCB_MAKE // PCB make
 #define DEBUG_SIZE 10000 // debug buffer
 #define DEBUG_TIMEOUT 3000 // ms
+
 #endif
 #if defined TARGET_NUCLEO_L053R8
 #define DEBUG_SIZE 1000 // debug buffer
@@ -59,6 +62,7 @@ InterruptIn       user_BTN   (USER_BUTTON);
 #endif
 
 #if defined TARGET_NUCLEO_L432KC
+#if defined BREADBOARD
 // input ports
 DigitalIn         in_BUSY     (PA_8);    
 InterruptIn       irq_BUSY    (PA_8);    
@@ -78,6 +82,28 @@ DigitalOut        out_SEL_2   (PA_10);
 // others
 DigitalOut        infoLed     (LED1);
 InterruptIn       user_BTN    (PB_4);
+#endif
+#if defined PCB_MAKE
+// input ports
+DigitalIn         in_BUSY     (PA_9);    
+InterruptIn       irq_BUSY    (PA_9);    
+DigitalIn         in_D_OUT    (PA_10);    
+InterruptIn       irq_D_OUT   (PA_10);
+DigitalIn         in_SEL_2    (PB_6); 
+DigitalIn         in_SEL_1    (PB_1);
+DigitalIn         in_D_IN     (PA_1); 
+DigitalIn         in_X_OUT    (PA_0);     
+InterruptIn       irq_X_OUT   (PA_0);
+// output ports  
+DigitalOut        out_SEL_2   (PA_8); 
+DigitalOut        out_SEL_1   (PA_11);   
+DigitalOut        out_ACK     (PB_7);  
+DigitalOut        out_D_OUT   (PA_12); 
+DigitalOut        out_D_IN    (PB_0);     
+// others
+DigitalOut        infoLed     (LED1);
+InterruptIn       user_BTN    (PB_4);
+#endif
 #endif
 
 // timers
