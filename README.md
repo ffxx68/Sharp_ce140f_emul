@@ -20,7 +20,10 @@ A move to a more compact (and powerful) L432KC board is in progress. This is how
 
 <img src="https://user-images.githubusercontent.com/659557/202128859-ecb3f3f4-8933-494c-a026-fa893b7ce3a1.jpg" width=100% height=100%>
 
-while I'm wondering about the realization of a custom PCB...
+## The PCB version...
+An Indiegogo campaign is in progress:
+
+[On Idndiegogo](https://www.indiegogo.com/projects/sharp-ce-140f-disk-drive-emulator/x/32084495#/)
 
 ## Hardware interface notes!
 
