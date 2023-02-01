@@ -20,7 +20,10 @@ A move to a more compact (and powerful) L432KC board is in progress. This is how
 
 <img src="https://user-images.githubusercontent.com/659557/202128859-ecb3f3f4-8933-494c-a026-fa893b7ce3a1.jpg" width=100% height=100%>
 
-while I'm wondering about the realization of a custom PCB...
+## The PCB version...
+An Indiegogo campaign is in progress:
+
+[Sharp_ce140f_emul on Indiegogo](https://www.indiegogo.com/projects/sharp-ce-140f-disk-drive-emulator/x/32084495#/)
 
 ## Hardware interface notes!
 
@@ -37,20 +40,20 @@ So, I decided to use the level converters only in the Nucleo-to-Sharp direction.
 About power, the Sharp and the Nucleo do not share the 5v power line, just gnd. This is to prevent the relatively low capacity internal coin cells to be drained by the Nucleo board. At present, the board is powered through its USB plug, but I plan to make it battery powered, maybe rechargeable.
 
 ## Emulation software description
-This emulator tries to respond as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the main Sharp-PC (I'll call it "PC" in the following), over the 11-pin interface. Unfortunately, the Official Service manual doesn't go beyond the low-level hardware description, so I tried summarizing in another document what we've found so far about the entire protocol:
+This emulator tries to respond as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC. Unfortunately, the official CE140-F Service Manual doesn't go beyond the low-level hardware description, so I tried summarizing in another document what we've found so far about the protocol:
 
 [Protocol](https://github.com/ffxx68/Sharp_ce140f_emul/blob/main/protocol.md)
 
-Being this a work in progress, I anyway recommend using the source code as the ultimate reference, though.
+Being this a work in progress, I recommend using the source code as the ultimate reference, anyway.
 
 ## Software build notes
-Board firmware is built using the standard methods offered by the online MBed Keil Studio IDE - https://studio.keil.arm.com/ - importing this GitHub repository and selecting the NUCLEO-L053R8, or NUCLEO-L432KC, depending on the actual target hardware, as the target. Refer to MBed Keil Studio documentation for details about how to proceed.
+Board firmware is built using the standard methods offered by the online MBed Keil Studio IDE - https://studio.keil.arm.com/ - importing this GitHub repository and selecting the NUCLEO-L053R8, or NUCLEO-L432KC, depending on the actual hardware, as the target. Refer to MBed Keil Studio documentation for details about how to proceed. I will share the complied binary too, ready for upload onto the board...
 
-The MBed library included within this repository is the (now formally unsupported) version 2. This choice is imposed by the small footprint it offers, compared to v6 (even with a "bare metal" build profile). If and when I move to a larger board (e.g. a L432KC), I might upgrade to latest versions.
+The MBed library included now with this repository is the (formally unsupported) version 2. This choice is imposed by the small footprint it offers, compared to v6 (even with a "bare metal" build profile). A v6 build simply doesn't fit in the L053R8. I will upgrade it for the L432KC, but after i reached a somewhat more stable version.
 
-The SD File System library is a small revision of the version found here: https://os.mbed.com/cookbook/SD-Card-File-System (the original didn't work out of the box, to me). By the way, it doesn't compile on the latest revision of the MBed library, so I had to rollback MBed (still v2) to revision #137. In any case, all of this is already included in present repo, which should compile out of the box.
+The SD File System library is a small revision of the version found here: https://os.mbed.com/cookbook/SD-Card-File-System (the original didn't work out of the box, to me). Moving to v6 and standard SD libs might solve these issues, but for the timebeing I'm using a local copy. It didn't compile on the latest revision of the MBed library, anyway, so I had to rollback MBed (still v2) to revision #137. In any case, all of the above is already included in present repo, which compiles as is, no intervention needed.
 
-The board software is still under development, as each command from the Sharp (DSKF, FILES, SAVE, LOAD, etc.) needs data retrieved from the SD to be properly formatted back to be accepted by the Sharp. This is a rather lengthy process, invoving a big deal of reverse engineering.
+The emulation software in itself is still under development, as each command from the Sharp (DSKF, FILES, SAVE, LOAD, etc.) needs data retrieved from the SD to be properly formatted back to be accepted by the Sharp. This is a rather lengthy process, involving a big deal of reverse engineering. So, stay tuned for updates...
 
 ## Acknowledgements
 Remy, author of the https://pockemul.com/ emulator, who reverse engineered the CE-140F protocol.
