@@ -5281,7 +5281,7 @@
     (uuid b95a3306-bcc2-49a6-b437-3786461cf2e6)
     (property "Reference" "BTN1" (id 0) (at 160.02 76.2 0))
     (property "Value" "User_button" (id 1) (at 160.02 78.74 0))
-    (property "Footprint" "Button_Switch_THT:SW_PUSH_6mm" (id 2) (at 160.02 78.74 0)
+    (property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" (id 2) (at 160.02 78.74 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "https://www.mouser.com/datasheet/2/670/ts04-2586192.pdf" (id 3) (at 160.02 78.74 0)
@@ -5837,7 +5837,7 @@
       (reference "#PWR029") (unit 1) (value "+5V") (footprint "")
     )
     (path "/b95a3306-bcc2-49a6-b437-3786461cf2e6"
-      (reference "BTN1") (unit 1) (value "User_button") (footprint "Button_Switch_THT:SW_PUSH_6mm")
+      (reference "BTN1") (unit 1) (value "User_button") (footprint "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm")
     )
     (path "/31308ac8-906a-485c-b104-416b7e839401"
       (reference "C2") (unit 1) (value "100n") (footprint "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder")
