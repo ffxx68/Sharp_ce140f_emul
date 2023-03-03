@@ -1,10 +1,18 @@
 # Sharp_ce140f_emul
 Sharp CE-140F disk drive emulator with an ST-Nucleo board
 
-This is an attempt of emulating the Sharp CE-140F disk drive with an ST-Nucleo board, a L053R8 in this implementation, 
-attached to a Sharp Pocket Computer (PC-1403) through the Sharp proprietary 11-pin interface. 
+This is an hardware module emulating the Sharp CE-140F disk drive with an SD-Card, using an STM32 microcotroller to 
+interface with a Sharp Pocket Computer (PC) through its proprietary 11-pin interface.
 
-Here's a link to a demo video, using the LOAD and SAVE commands on the Sharp PC:
+What I think the Sharp-PC was missing the most (like any retro computers from the 80's) is a quick and convenient way to store and retrieve programs to and from its memory. Entering a BASIC listing by hand has always been the most frustrating task, in the early days of home computing. Yes, a software-emulated cassette interface does exist already, but disk storage is way much better! 
+
+The Sharp CE140-F Disk Driver was a rare and expensive extension, compatible with several of the Sharp-PC models:
+
+PC-1280, PC-1280(Jap), PC-1285, PC-1403, PC-1403H, PC-1425, PC-1425(Jap), PC-1460, PC-1460(Jap), PC-1470U, PC-1475, PC-1475(Jap), EL-5500III, PC-E500, PC-E500(Jap), PC-E500S, PC-E550, PC-E650, PC-U6000. As well as the PC-1360, PC-1360K, PC-1365 and PC-1365K after 1986. 
+
+See also: [pocket.free.fr](http://pocket.free.fr/html/sharp/ce-140f_e.html?fbclid=IwAR3U31Bk95W-eKc_V7EStOoxpfgk6qsZ3UOhHXM6cb7czv4wsmH_SPU4H-8)
+
+This interface is a cheap alternative to effectively have file management on the Sharp PC. Here's a link to a demo on the early prototype, using the LOAD and SAVE commands for example:
 
 [LOAD or SAVE demo](https://youtu.be/YH5hvxJgKFs)
 
@@ -24,6 +32,10 @@ A move to a more compact (and powerful) L432KC board is in progress. This is how
 An Indiegogo campaign is in progress:
 
 [Sharp_ce140f_emul on Indiegogo](https://www.indiegogo.com/projects/sharp-ce-140f-disk-drive-emulator/x/32084495#/)
+
+with the initial samples of the PCB board looking like this:
+
+![20230224_192914](https://user-images.githubusercontent.com/659557/222702257-49f2eee3-81a0-442a-94ac-1fe89b781090.jpg)
 
 ## Hardware interface notes!
 
