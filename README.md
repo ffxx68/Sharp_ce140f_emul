@@ -1,7 +1,7 @@
 # Sharp_ce140f_emul
 Sharp CE-140F disk drive emulator with an ST-Nucleo board
 
-This is an hardware module emulating the Sharp CE-140F disk drive with an SD-Card, using an STM32 microcotroller to 
+This is an hardware module emulating the Sharp CE-140F disk drive with an SD-Card, using an STM32 microcontroller to 
 interface with a Sharp Pocket Computer (PC) through its proprietary 11-pin interface.
 
 What I think the Sharp-PC was missing the most (like any retro computers from the 80's) is a quick and convenient way to store and retrieve programs to and from its memory. Entering a BASIC listing by hand has always been the most frustrating task, in the early days of home computing. Yes, a software-emulated cassette interface does exist already, but disk storage is way much better! 
@@ -20,22 +20,24 @@ I started with this prototype (Apr '22) on the Nucleo L053R8 board:
 
 <img src="https://user-images.githubusercontent.com/659557/180180992-6d9be30f-607c-4927-bcbf-eb3c7a3ea95e.jpg" width=100% height=100%>
 
-which I later moved to a proto-board version:
+which I later also moved to a proto-board version:
 
 <img src="https://user-images.githubusercontent.com/659557/197160147-e2b9a441-d164-4adc-97ca-d35f92db984d.jpg" width=100% height=100%>
 
-A move to a more compact (and powerful) L432KC board is in progress. This is how it appears at present:
+Then, I abandoned the L053R8, in favour of a more compact (and powerful) L432KC board. The prototype is like below:
 
 <img src="https://user-images.githubusercontent.com/659557/202128859-ecb3f3f4-8933-494c-a026-fa893b7ce3a1.jpg" width=100% height=100%>
 
 ## The PCB version...
-An Indiegogo campaign is in progress:
+An Indiegogo campaign is still in progress, funding the manufacturing of a PCB board to hold the Nucleo, SD card, and interface circuitry:
 
 [Sharp_ce140f_emul on Indiegogo](https://www.indiegogo.com/projects/sharp-ce-140f-disk-drive-emulator/x/32084495#/)
 
-with the initial samples of the PCB board looking like this:
+Early samples of the assembled PCB boards are looking like this:
 
-![20230224_192914](https://user-images.githubusercontent.com/659557/222702257-49f2eee3-81a0-442a-94ac-1fe89b781090.jpg)
+![20230228_182704](https://user-images.githubusercontent.com/659557/222767238-69398b13-cc70-4f3a-9172-2753334ed6cd.jpg)
+
+while testing is ongoing...
 
 ## Hardware interface notes!
 
