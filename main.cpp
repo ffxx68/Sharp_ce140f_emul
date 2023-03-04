@@ -588,7 +588,10 @@ void bitReady ( void ) {
 }
 
 void startDeviceCodeSeq ( void ) {
-    wait_us (BIT_DELAY_1);
+    uint32_t nTimeout = 100;
+    while ( ( in_D_OUT == 0 ) && (nTimeout--) ) {
+        wait_us (BIT_DELAY_1);
+    }    
     pc.putc('\n');pc.putc('s'); // debug 
     if ( in_D_OUT == 1 ) {
         // Device Code transfer starts with both X_OUT and DOUT high
