@@ -23,7 +23,7 @@ volatile uint8_t     skipDeviceCode = 0;
 uint8_t  out_checksum = 0;
 FILE    *fp;
 int      fileCount; 
-uint8_t  FileName[15];
+uint8_t  FileName[17];
 int      file_size;
 int      file_pos = 0;
 
