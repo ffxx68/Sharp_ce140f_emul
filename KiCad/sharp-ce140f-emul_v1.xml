@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <export version="E">
   <design>
-    <source>C:\Users\F.Fumi\Dropbox\sharp PC 1403\ce140f_mbed\KiCAD_draft\mbed_ce140f_v1\sharp-ce140f-emul_v1.kicad_sch</source>
-    <date>19/01/2023 13:08:20</date>
+    <source>C:\Users\F.Fumi\Dropbox\sharp PC 1403\ce140f_mbed\git_repo\Sharp_ce140f_emul\KiCad\sharp-ce140f-emul_v1.kicad_sch</source>
+    <date>01/02/2023 11:26:44</date>
     <tool>Eeschema (6.0.5)</tool>
     <textvar name="CONFIGURATIONPARAMETERS"/>
     <textvar name="CONFIGURATORNAME"/>
@@ -124,7 +124,7 @@
   <components>
     <comp ref="BTN1">
       <value>User_button</value>
-      <footprint>Button_Switch_THT:SW_PUSH_6mm</footprint>
+      <footprint>Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm</footprint>
       <datasheet>https://www.mouser.com/datasheet/2/670/ts04-2586192.pdf</datasheet>
       <libsource lib="Switch" part="SW_Push" description="Push button switch, generic, two pins"/>
       <property name="Sheetname" value=""/>
@@ -888,7 +888,7 @@
       <uri>C:\Program Files\KiCad\6.0\share\kicad\symbols\/Transistor_FET.kicad_sym</uri>
     </library>
     <library logical="sharp-ce140f-emul">
-      <uri>C:\Users\F.Fumi\Dropbox\sharp PC 1403\ce140f_mbed\KiCAD_draft\mbed_ce140f_v1/sharp-ce140f-emul.kicad_sym</uri>
+      <uri>C:\Users\F.Fumi\Dropbox\sharp PC 1403\ce140f_mbed\git_repo\Sharp_ce140f_emul\KiCad/sharp-ce140f-emul.kicad_sym</uri>
     </library>
   </libraries>
   <nets>
