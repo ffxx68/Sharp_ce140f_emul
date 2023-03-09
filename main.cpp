@@ -12,8 +12,8 @@
 #define DEBUG 1
 
 #if defined TARGET_NUCLEO_L432KC
-#define BREADBOARD // prototype
-//#define PCB_MAKE // PCB make
+//#define BREADBOARD // prototype
+#define PCB_V1 // PCB make
 #define DEBUG_SIZE 10000 // debug buffer
 #define DEBUG_TIMEOUT 3000 // ms
 
@@ -83,7 +83,7 @@ DigitalOut        out_SEL_2   (PA_10);
 DigitalOut        infoLed     (LED1);
 InterruptIn       user_BTN    (PB_4);
 #endif
-#if defined PCB_MAKE
+#if defined PCB_V1
 // input ports
 DigitalIn         in_BUSY     (PA_9);    
 InterruptIn       irq_BUSY    (PA_9);    
