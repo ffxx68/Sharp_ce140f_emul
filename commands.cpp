@@ -19,6 +19,16 @@ volatile uint16_t    outDataPutPosition;
 volatile bool        cmdComplete;
 volatile uint8_t     skipDeviceCode = 0;
 
+// open file pointers
+typedef struct {
+    uint8_t fn;
+    uint8_t mode;
+    FILE* fp;
+    uint16_t pos;
+} finfo_t ;
+
+finfo_t open_files[MAX_N_FILES];
+
 // locals
 uint8_t  out_checksum = 0;
 FILE    *fp;
@@ -134,8 +144,7 @@ void process_FILES_LIST(uint8_t cmd) {
             && n_files < 0xFF  // max 255 files 
             ) { 
             //debug_log("<%s>\n", ent->d_name);
-            // ignore files other than BASIC (for the timebeing...),
-            if ( (ext_pos = (uint8_t *)strstr (ent->d_name, ".BAS")) != 0 ) {
+            if ( (ext_pos = (uint8_t *)strstr (ent->d_name, ".")) != 0 ) {
                 n_files++;
                 //debug_log("BAS %d\n", n_files);
             }
@@ -146,13 +155,14 @@ void process_FILES_LIST(uint8_t cmd) {
         // file name expected like "X:A       .BAS "
         debug_log("<%s>\n", ent->d_name);
         strcpy((char*)tmp, ent->d_name);
-        const char *p = strstr(ent->d_name, ".BAS");
+        const char *p = strstr(ent->d_name, ".");
         const char *s = ent->d_name;
         if (p) {
             strncpy ((char*)tmp, s, (p-s));
             tmp[(p-s)] = 0x00;
             trim(tmp); // shouldn't be needed... files stored on SD without blanks
-            sprintf ((char*)FileName, "X:%-8s.BAS ",(char*)tmp); // '%-8s' pads to 8 blanks
+            sprintf ((char*)FileName, "X:%-8s%4s ",(char*)tmp, p); // '%-8s' pads to 8 blanks
+            debug_log("<%s>\n", ent->d_name);
         } else {
             outDataAppend(0xFF); // send err back
             ERR_PRINTOUT(" ERR clean\n");
@@ -180,24 +190,13 @@ void process_FILES(void) {
         outDataAppend(out_checksum);
         return;
     }
-    // Send nb files, from specified dir (with wildcards)
-    /* 
-    QString s ="";
-    for (int i =3;i< 15;i++) {
-        s.append(Quint8_t(data.at(i)));
-    }
-    //    s="*.BAS"; 
-    fileList = directory.entryList( QStringList() << s.replace(" ",""),QDir::Files);
-    outDataAppend(CheckSum(fileList.size()));
-    fileCount = -1;
-    */
+    // file name wildcards (* ?) to be handled, yet ...
     if ((dir = opendir (SD_HOME)) != NULL) { // ignore files other than BASIC
         // print all the files and directories within directory
         while ((ent = readdir (dir)) != NULL
             && n_files < 0xFF ) { // max 255 files
             //debug_log("<%s>\n", ent->d_name);
-            // ignore files other than BASIC (for the timebeing...)
-            if ( (ext_pos = (uint8_t *)strstr (ent->d_name, ".BAS")) != 0 ) 
+            if ( (ext_pos = (uint8_t *)strstr (ent->d_name, ".")) != 0 ) 
                 n_files++; 
         }
         closedir (dir);
@@ -526,13 +525,184 @@ void process_DSKF(void) {
         outDataAppend(out_checksum);      
 }    
 
-void process_CLOSE( uint8_t file ) {
-        debug_log ( "CLOSE 0x%02X\n",  file);
+void process_CLOSE( void ) {
+        uint8_t fn = inDataBuf[1];
+        debug_log ( "CLOSE 0x%02X\n", fn);
         out_checksum = 0;
-        // a CLOSE 0x00 (all files?) is issued also at RUN
-        // ???
+        // a CLOSE 0xFF (on all files) is issued also at RUN
+        if ( fn == 0xFF )
+            for  (int i=0; i<MAX_N_FILES; i++) {
+                if ( open_files[i].fp != NULL ) 
+                    fclose ( open_files[i].fp );
+                open_files[i].fp = NULL;
+                open_files[i].mode = 0;
+                open_files[i].pos = 0;
+            }
+        else {
+            fn = fn - 2; // array index
+            if ( open_files[fn].fp != NULL ) {
+                fclose ( open_files[fn].fp );
+                open_files[fn].fp = NULL;
+                open_files[fn].mode = 0;
+                open_files[fn].pos = 0; 
+            }
+            else
+                ERR_PRINTOUT("file not open");
+        }
         outDataAppend(CheckSum(0x00));
 }  
+
+void process_OPEN( void ) {
+    FILE* fp;
+    uint8_t mode = inDataBuf[15]; // 1: input, 2: output, 3: append
+    uint8_t fn = inDataBuf[16]-2; // file#
+
+    getFileName();
+    debug_log ( "OPEN <%s> FOR '%d' AS #%d\n",FileName,mode,fn+2);
+
+    // file # from 2, used as file info array index
+    if ( fn<0||fn>MAX_N_FILES ) {
+        ERR_PRINTOUT( "Invalid file #\n");
+        outDataAppend(0xFF); // NOT ok!
+    }
+    if ( open_files[fn].fp != NULL ) 
+        fclose ( open_files[fn].fp ); // just in case...
+    switch ( mode ) {
+        case 1:{
+            // for 'input'          
+            fp = fopen((char*)FileName, "r"); // If the file exists already, contents overwritten
+            break;
+        } 
+        case 2:{
+            // for 'output'
+            fp = fopen((char*)FileName, "w"); // If the file exists already, contents overwritten
+            break;
+        }         
+        case 3:{
+            // for 'append'
+            // Sharp expects an error if file don't exists
+            if ( !file_exists ( (char*)FileName ) ) {
+                ERR_PRINTOUT("append no file\n");
+                outDataAppend(0xFF);
+                break;
+            }
+            fp = fopen((char*)FileName, "a"); // appending to exisiting file (nee)
+            break;
+        } 
+    }
+    if ( fp == NULL ) {
+        ERR_PRINTOUT("fopen error\n");
+        outDataAppend(0xFF);
+    } else {
+        open_files[fn].fp = fp;
+        open_files[fn].mode = mode;
+        open_files[fn].pos = 0;
+        // done
+        outDataAppend(CheckSum(0x00));    
+    }     
+}
+
+uint8_t cur_fn ;
+void process_PRINT( int cmd ) {
+
+    debug_log ( "PRINT 0x%02X\n", cmd);
+    // Similar to SAVE - should move common parts to functions
+    switch (cmd) {
+        case 0x15: { 
+            // file for current command
+            cur_fn = inDataBuf[1]-2; // file# from 2
+            debug_log ( "file #%d 0x%02X '%d' @ %d\n", 
+                cur_fn+2, 
+                open_files[cur_fn].fp,
+                open_files[cur_fn].mode, 
+                open_files[cur_fn].pos);
+
+            // check if file mode is coherent with PRINT?
+
+            skipDeviceCode = 0xFD; // next PRINT sub-command
+            outDataAppend(0x00); // ok, done
+            break;
+        }
+        case 0xFD: {
+            int buf_pos = 0;
+            debug_log ( " current file #%d\n", cur_fn+2); 
+            // similar to SAVE
+            while ( buf_pos < inBufPosition - 2 ) { // omit 0x00+checksum
+                fputc ((int)(inDataBuf[buf_pos]), open_files[cur_fn].fp) ;
+                buf_pos ++;
+                open_files[cur_fn].pos++; // store current file position in the array
+            }
+            // Note that line termination 0D 0A is received with another command
+            outDataAppend(CheckSum(0x00));
+            break;
+        }
+        default: {
+            ERR_PRINTOUT( "openWriteFile error\n");
+            outDataAppend(0xFF); // NOT ok!
+        }
+    }
+    
+}
+
+void process_INPUT( int cmd ) {
+    
+    debug_log ( "INPUT 0x%02X\n", cmd);
+    // file# for current command
+    cur_fn = inDataBuf[1]-2;
+    debug_log ( "file #%d 0x%02X '%d' @ %d\n", 
+        cur_fn+2, 
+        open_files[cur_fn].fp,
+        open_files[cur_fn].mode, 
+        open_files[cur_fn].pos);
+    // check if file mode is coherent with INPUT?
+    // Similar to LOAD (ascii) - move common parts to functions?
+    switch (cmd) {
+        case 0x13:
+        case 0x14: { 
+            outDataAppend(0x00);
+            char c;
+            char line [82];
+            line[0]=0x00;
+            // Similar to a 'LOAD ascii' (one line)
+            do {
+                c=fgetc(open_files[cur_fn].fp);
+                strncat (line,&c,1);
+                open_files[cur_fn].pos++;
+            } while ((c != EOF) && (c!=0x0A)); // line ends with 0D+0A
+            if (c == EOF)
+                debug_log ("EOF!\n");
+            else
+                debug_log ("line: <%s>", line);            sendString(line);
+            outDataAppend(0x00);
+            outDataAppend(out_checksum);
+            outDataAppend(0x00);
+            break;
+        }
+        default: {
+            ERR_PRINTOUT( "unknown INPUT sub-command\n");
+            outDataAppend(0xFF); // NOT ok!
+        }
+    }
+}
+
+void process_KILL( void ) {
+    uint8_t tmpFile[13];
+    debug_log ( "process_KILL\n");
+    strncpy ((char*)tmpFile, (const char *)(inDataBuf+3), 12);
+    tmpFile[12] = '\0'; // terminate
+    trim (tmpFile); // remove blanks
+    sprintf ((char*)FileName, "%s%s", SD_HOME, tmpFile);
+    debug_log ( "KILL <%s>\n", FileName );
+    if ( file_exists ( (char*)FileName ) ) {
+        int r = remove ( (char*)FileName );
+        debug_log ("remove: %d\n", r);
+        outDataAppend(CheckSum(0x00));
+    } else {
+        ERR_PRINTOUT("file not present\n");
+        outDataAppend(0xFF);
+    }
+} 
+
 
 void ProcessCommand ( void ) {
 
@@ -545,15 +715,16 @@ void ProcessCommand ( void ) {
     skipDeviceCode = 0;
 
     switch (commandCode) {
-    case 0x04: process_CLOSE(0);break;
+    case 0x03: process_OPEN();break;
+    case 0x04: process_CLOSE();break;
     case 0x05: process_FILES();break;
     case 0x06: process_FILES_LIST(0);break;
     case 0x07: process_FILES_LIST(1);break;
     /* 
     case 0x08: process_INIT(0x08);break;
     case 0x09: process_INIT(0x09);break;
-    case 0x0A: process_KILL(0x0A);break;
     */
+    case 0x0A: process_KILL();break;
         //    case 0x0B: process_NAME(0x0B);break;
         //    case 0x0C: process_SET(0x0C);break;
         //    case 0x0D: process_COPY(0x0D);break;
@@ -562,12 +733,13 @@ void ProcessCommand ( void ) {
     case 0x10: process_SAVE(0x10);break;
     case 0x11: process_SAVE(0x11);break;
     case 0x16: process_SAVE(0x16);break;    // SAVE ASCII
-    case 0xFE: process_SAVE(0xfe);break;    // Handle ascii saved data stream
-    case 0xFF: process_SAVE(0xff);break;    // Handle saved data stream
+    case 0xFE: process_SAVE(0xfe);break;    // next SAVE ascii cmd
+    case 0xFF: process_SAVE(0xff);break;    // next SAVE cmd
     case 0x12: process_LOAD(0x12);break;
-        //    case 0x13: process_INPUT(0x13);break;
-        //    case 0x14: process_INPUT(0x14);break;
-        //    case 0x15: process_PRINT(0x15);break;
+    case 0x13: process_INPUT(0x13);break; // INPUT #x, X$
+    case 0x14: process_INPUT(0x14);break; // INPUT #x, X
+    case 0x15: process_PRINT(0x15);break;
+    case 0xFD: process_PRINT(0xfd);break; // next PRINT cmd
     case 0x17: process_LOAD(0x17);break;
         //    case 0x1A: process_EOF(0x1A);break;
         //    case 0x1C: process_LOC(0x1C);break;

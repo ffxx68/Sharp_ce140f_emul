@@ -16,8 +16,8 @@
 
 #define ERR_PRINTOUT(x) debug_log(x); pc.printf(x)
 #define ERR_SD_CARD_NOT_PRESENT "SD Card not present!\n"
-
 #define SD_HOME "/sd/"
+#define MAX_N_FILES 6 
 
 extern volatile uint8_t     inDataBuf[];
 extern volatile uint8_t     outDataBuf[];
