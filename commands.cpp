@@ -2,11 +2,10 @@
 #include "SDFileSystem.h"
 #include <cstdint>
 
-
 // from other modules
 extern void debug_log(const char *fmt, ...);
 extern void debug_hex(volatile uint8_t *buf, volatile uint16_t len);
-extern void debugOutput( void );
+extern void outDebugDump( void );
 extern RawSerial         pc;
 extern volatile uint16_t outDataGetPosition;
 
@@ -33,7 +32,7 @@ finfo_t open_files[MAX_N_FILES];
 uint8_t  out_checksum = 0;
 FILE    *fp;
 int      fileCount; 
-uint8_t  FileName[15];
+uint8_t  FileName[17];
 int      file_size;
 int      file_pos = 0;
 
@@ -632,7 +631,10 @@ void process_PRINT( int cmd ) {
                 buf_pos ++;
                 open_files[cur_fn].pos++; // store current file position in the array
             }
-            // Note that line termination 0D 0A is received with another command
+            // append line termination
+            fputc (0X0D, open_files[cur_fn].fp); 
+            fputc (0X0A, open_files[cur_fn].fp);
+            // Note that ONE MORE line termination 0D 0A is received with another command
             outDataAppend(CheckSum(0x00));
             break;
         }
@@ -645,7 +647,6 @@ void process_PRINT( int cmd ) {
 }
 
 void process_INPUT( int cmd ) {
-    
     debug_log ( "INPUT 0x%02X\n", cmd);
     // file# for current command
     cur_fn = inDataBuf[1]-2;
@@ -654,6 +655,7 @@ void process_INPUT( int cmd ) {
         open_files[cur_fn].fp,
         open_files[cur_fn].mode, 
         open_files[cur_fn].pos);
+    
     // check if file mode is coherent with INPUT?
     // Similar to LOAD (ascii) - move common parts to functions?
     switch (cmd) {
@@ -666,13 +668,18 @@ void process_INPUT( int cmd ) {
             // Similar to a 'LOAD ascii' (one line)
             do {
                 c=fgetc(open_files[cur_fn].fp);
+                if ( c == 0xFF ) {
+                    ERR_PRINTOUT( "fgetc 0xFF\n");
+                    outDataAppend(0xFF);
+                    break;        
+                }
                 strncat (line,&c,1);
                 open_files[cur_fn].pos++;
             } while ((c != EOF) && (c!=0x0A)); // line ends with 0D+0A
             if (c == EOF)
                 debug_log ("EOF!\n");
             else
-                debug_log ("line: <%s>", line);            sendString(line);
+                debug_log ("line: <%s>\n", line);            sendString(line);
             outDataAppend(0x00);
             outDataAppend(out_checksum);
             outDataAppend(0x00);

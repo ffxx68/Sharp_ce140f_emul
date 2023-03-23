@@ -152,7 +152,7 @@ void  SetACK ( void ) {
 volatile uint8_t  debugBuf[DEBUG_SIZE];
 void debug_log(const char *fmt, ...)
 {
-    uint8_t     debugLine[80];
+    uint8_t debugLine[120];
     va_list va;
     debuglock = 1;
     va_start (va, fmt);
@@ -474,7 +474,7 @@ void inDataReady ( void ) {
         debug_log ( "in: %d bytes (first 40 below)\n", inBufPosition) ; 
         debug_hex ( inDataBuf, (inBufPosition) < (40) ? (inBufPosition) : (40) );
         debug_log ( "avg input timing (ms/byte): %.2f\n", 
-            (testTimer.read_us() - IN_DATAREADY_TIMEOUT) / inBufPosition/1000.0); 
+           (testTimer.read_us() - IN_DATAREADY_TIMEOUT) / inBufPosition/1000.0); 
         // Verify checksum
         checksum=0;
         for (int i=0;i<inBufPosition-1;i++) {
@@ -588,8 +588,12 @@ void bitReady ( void ) {
 }
 
 void startDeviceCodeSeq ( void ) {
+    uint32_t nTimeout = 100;
+    while ( ( in_D_OUT == 0 ) && (nTimeout--) ) {
+        wait_us (BIT_DELAY_1);
+    }
     wait_us (BIT_DELAY_1);
-    pc.putc('\n');pc.putc('s'); // debug 
+    pc.putc('s'); // debug 
     if ( in_D_OUT == 1 ) {
         // Device Code transfer starts with both X_OUT and DOUT high
         // (X_OUT high with DOUT low is for cassette write)
@@ -598,7 +602,7 @@ void startDeviceCodeSeq ( void ) {
         deviceCode = 0;
         //debugBuf[0] = 0;  // with a periodic dump: buffer resets
         inBufPosition = 0;
-        debug_log ("\nDevice\n");
+        debug_log ("Device\n");
         wait_us (ACK_DELAY) ;   //?? or, wait only AFTER enabling trigger ??
         // serial bit trigger
         irq_BUSY.rise(&bitReady);
@@ -617,9 +621,9 @@ int main(void) {
     wait_ms(20);
   }
 
-  debugBuf[0] = 0;
   inBufPosition = 0;
 #ifdef DEBUG
+  debugBuf[0] = 0;
   user_BTN.rise(&outDebugDumpManual);
   debugOutTimeout.attach_us( &outDebugDump, DEBUG_TIMEOUT );
 #endif
