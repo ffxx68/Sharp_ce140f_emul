@@ -39,7 +39,7 @@ Early samples of the assembled PCB boards are looking like this:
 
 while testing is ongoing...
 
-## Hardware interface notes!
+## Hardware interface notes
 
 Interface schematics (find complete KiCad project in the repo):
 
@@ -52,6 +52,8 @@ I initially struggled a lot, before I got the Nucleo board properly receive the 
 So, I decided to use the level converters only in the Nucleo-to-Sharp direction. I also configured Nucleo internal pull-down on each input line (45K resistor, as per datasheet) and added a 10K in series, as in the schematics above, to achieve the 5-to-3.3 divide in the opposite direction. This way, I reached a stage where the correct 0x41 device code, as well as the follow-up command sequence was received, but it also forced me to use different pins of the Nucleo board for the return lines (Nucleo-to-Sharp), converting them to 5v and issuing to the 11-pin connector through diodes to isolate them from the inputs (Sharp-to-Nucleo). See schematics above. Output and input stages are time-separated, and during output, input pins on Nucleo needs to be set to a PullNone (i.e. high impedance) mode.
 
 About power, the Sharp and the Nucleo do not share the 5v power line, just gnd. This is to prevent the relatively low capacity internal coin cells to be drained by the Nucleo board. At present, the board is powered through its USB plug, but I plan to make it battery powered, maybe rechargeable.
+
+**Important Note** - With the Nucleo L432KC, by default the PA_5 (A4) and PA_6 (A5) pins can only be used as Input floating (ADC function). SB16 and SB18 solder bridges (0-ohm resistors, actually) must be removed, in order to use these pins as Digital output and have access to other functions (DigitalOut, SPI, PWM, etc...). Refer to the user manual for more details.
 
 ## Emulation software description
 This emulator tries to respond as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC. Unfortunately, the official CE140-F Service Manual doesn't go beyond the low-level hardware description, so I tried summarizing in another document what we've found so far about the protocol:
