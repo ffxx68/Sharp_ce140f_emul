@@ -16,28 +16,19 @@ This interface is a cheap alternative to effectively have file management on the
 
 [LOAD or SAVE demo](https://youtu.be/YH5hvxJgKFs)
 
-I started with this prototype (Apr '22) on the Nucleo L053R8 board:
+## The PCB board
+
+After optimizing the project with this early prototype on the Nucleo L053R8 board:
 
 <img src="https://user-images.githubusercontent.com/659557/180180992-6d9be30f-607c-4927-bcbf-eb3c7a3ea95e.jpg" width=100% height=100%>
 
-which I later also moved to a proto-board version:
-
-<img src="https://user-images.githubusercontent.com/659557/197160147-e2b9a441-d164-4adc-97ca-d35f92db984d.jpg" width=100% height=100%>
-
-Then, I abandoned the L053R8, in favour of a more compact (and powerful) L432KC board. The prototype is like below:
-
-<img src="https://user-images.githubusercontent.com/659557/202128859-ecb3f3f4-8933-494c-a026-fa893b7ce3a1.jpg" width=100% height=100%>
-
-## The PCB version...
-An Indiegogo campaign is still in progress, funding the manufacturing of a PCB board to hold the Nucleo, SD card, and interface circuitry:
+an Indiegogo campaign funded the manufacturing of a PCB board, to hold the Nucleo (now a more powerful L432KC), SD card, and interface circuitry:
 
 [Sharp_ce140f_emul on Indiegogo](https://www.indiegogo.com/projects/sharp-ce-140f-disk-drive-emulator/x/32084495#/)
 
-Early samples of the assembled PCB boards are looking like this:
+with the assembled PCBs looking like this:
 
-![20230228_182704](https://user-images.githubusercontent.com/659557/222767238-69398b13-cc70-4f3a-9172-2753334ed6cd.jpg)
-
-while testing is ongoing...
+![20230307_111529](https://user-images.githubusercontent.com/659557/232753380-9727eaa1-7254-4868-8ac6-99e3e37953b8.jpg)
 
 ## Hardware interface notes
 
