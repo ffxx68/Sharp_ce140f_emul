@@ -14,7 +14,7 @@ See also: [pocket.free.fr](http://pocket.free.fr/html/sharp/ce-140f_e.html?fbcli
 
 This interface is a cheap alternative to effectively have file management on the Sharp PC. Here's a link to a demo on the early prototype, using the LOAD and SAVE commands for example:
 
-[LOAD or SAVE demo](https://youtu.be/YH5hvxJgKFs)
+[LOAD or SAVE demo](https://www.youtube.com/watch?v=3_DliJE_47g&t=2s)
 
 ## The PCB board
 
