@@ -12,9 +12,7 @@ PC-1280, PC-1280(Jap), PC-1285, PC-1403, PC-1403H, PC-1425, PC-1425(Jap), PC-146
 
 See also: [pocket.free.fr](http://pocket.free.fr/html/sharp/ce-140f_e.html?fbclid=IwAR3U31Bk95W-eKc_V7EStOoxpfgk6qsZ3UOhHXM6cb7czv4wsmH_SPU4H-8)
 
-This interface is a cheap alternative to effectively have file management on the Sharp PC. Here's a link to a demo on the early prototype, using the LOAD and SAVE commands for example:
-
-[LOAD or SAVE demo](https://www.youtube.com/watch?v=3_DliJE_47g&t=2s)
+This interface is a cheap alternative, to effectively have disk file management on the Sharp PC.
 
 ## The PCB board
 
@@ -29,6 +27,14 @@ an Indiegogo campaign funded the manufacturing of a PCB board, to hold the Nucle
 with the assembled PCBs looking like this:
 
 ![20230307_111529](https://user-images.githubusercontent.com/659557/232753380-9727eaa1-7254-4868-8ac6-99e3e37953b8.jpg)
+
+and here's a demo, using the LOAD and SAVE commands for example:
+ 
+[LOAD or SAVE demo](https://www.youtube.com/watch?v=3_DliJE_47g&t=2s)
+
+The complete KiCAD project is included here on github, but here's a direct link in case you would like to order some directly by the company used to manufacture the boards above:
+
+[Sharp_ce140f_emul by AISLER](https://aisler.net/p/DIQRWUOC)
 
 ## Hardware interface notes
 
