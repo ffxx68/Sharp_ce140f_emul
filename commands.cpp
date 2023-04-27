@@ -625,16 +625,25 @@ void process_PRINT( int cmd ) {
         case 0xFD: {
             int buf_pos = 0;
             debug_log ( " current file #%d\n", cur_fn+2); 
-            // similar to SAVE
-            while ( buf_pos < inBufPosition - 2 ) { // omit 0x00+checksum
-                fputc ((int)(inDataBuf[buf_pos]), open_files[cur_fn].fp) ;
-                buf_pos ++;
-                open_files[cur_fn].pos++; // store current file position in the array
+            debug_log ( " inBufPosition %d\n", inBufPosition); 
+            // skip empty message (CRLF only)
+            if (!(inDataBuf[1] == 0x0A && inDataBuf[0] == 0x0D)) {
+                // similar to SAVE
+                while ( buf_pos < inBufPosition - 2 ) { // omit 0x00+checksum
+                    // skip an empty message (CRLF only)
+                    if (!(  (buf_pos == 0 && inDataBuf[buf_pos] == 0x0D)
+                        ||(buf_pos == 1 && inDataBuf[buf_pos] == 0x0A)))
+                        fputc ((int)(inDataBuf[buf_pos]), open_files[cur_fn].fp) ;
+                    buf_pos ++;
+                    open_files[cur_fn].pos++; // store current file position in the array
+                }
+                if ( inDataBuf[inBufPosition-3] != 0x0A ) {
+                    // append line termination, when missing from the message
+                    debug_log ( " appending CFLF\n");
+                    fputc (0X0D, open_files[cur_fn].fp); 
+                    fputc (0X0A, open_files[cur_fn].fp);
+                }
             }
-            // append line termination
-            fputc (0X0D, open_files[cur_fn].fp); 
-            fputc (0X0A, open_files[cur_fn].fp);
-            // Note that ONE MORE line termination 0D 0A is received with another command
             outDataAppend(CheckSum(0x00));
             break;
         }
@@ -643,7 +652,6 @@ void process_PRINT( int cmd ) {
             outDataAppend(0xFF); // NOT ok!
         }
     }
-    
 }
 
 void process_INPUT( int cmd ) {
@@ -659,8 +667,10 @@ void process_INPUT( int cmd ) {
     // check if file mode is coherent with INPUT?
     // Similar to LOAD (ascii) - move common parts to functions?
     switch (cmd) {
-        case 0x13:
-        case 0x14: { 
+        case 0x13: // string
+        case 0x14: // number
+        case 0x20: // number array
+        { 
             outDataAppend(0x00);
             char c;
             char line [82];
@@ -752,7 +762,7 @@ void ProcessCommand ( void ) {
         //    case 0x1C: process_LOC(0x1C);break;
     case 0x1D: process_DSKF(); break;
         //    case 0x1F: process_INPUT(0x1f);break;
-        //    case 0x20: process_INPUT(0x20);break;
+    case 0x20: process_INPUT(0x20);break;
     default:
         pc.printf(" command 0x%02X - ", inDataBuf[0]);
         ERR_PRINTOUT( "Unsupported (yet...)\n" ); 

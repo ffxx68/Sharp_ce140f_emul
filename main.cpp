@@ -28,10 +28,10 @@
 // (1000 chars @ 9600 bps => about 0.9 s)
 // Possibily, increase serial speed...
 
-#define NIBBLE_DELAY_1 100 // us
+#define NIBBLE_DELAY_1 1000 // us
 #define NIBBLE_DELAY_2 1000 // us
 #define NIBBLE_ACK_DELAY 100 // us
-#define BIT_DELAY_1 200 // us
+#define BIT_DELAY_1 1000 // us
 #define BIT_DELAY_2 2000 // us
 #define ACK_DELAY 20000 // us
 #define ACK_TIMEOUT 1 // s
