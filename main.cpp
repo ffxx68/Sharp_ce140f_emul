@@ -37,7 +37,7 @@
 #define ACK_TIMEOUT 1 // s
 #define DATA_WAIT 9000 // us
 #define IN_DATAREADY_TIMEOUT 50000 // us
-#define OUT_NIBBLE_DELAY 50 // us
+#define OUT_NIBBLE_DELAY 500 // us
 
 #if defined TARGET_NUCLEO_L053R8
 // input ports
@@ -313,7 +313,7 @@ void outDataSpooler ( void ) {
             pc.putc('t');
             outDataEnd();
             // last wait for BUSY to go DOWN
-            uint32_t nTimeout = 5000; // max wait
+            uint32_t nTimeout = 50000; // max wait
             while ( in_BUSY && (nTimeout--) )
                 wait_us (100);
             if (!nTimeout) {
@@ -354,9 +354,9 @@ void SendOutputData ( void ) {
         wait_us (OUT_NIBBLE_DELAY); // here ?
 
         // wait for BUSY to go DOWN
-        nTimeout = 500000; // max wait: 5 s
+        nTimeout = 50000; // max wait: 5 s
         while ( in_BUSY!=0 && (nTimeout--)>0 ) {
-            wait_us (10);
+            wait_us (100);
         }  
         if (nTimeout < 1) {
             ERR_PRINTOUT("Send error 1\n");
@@ -380,14 +380,13 @@ void SendOutputData ( void ) {
         out_SEL_2 = ((t&0x02)>>1);
         out_D_OUT = ((t&0x04)>>2);
         out_D_IN  = ((t&0x08)>>3);
-        
-        // nibble is ready for Sharp-PC to get it
+        // nibble is ready for Sharp-PC to get it        
+        wait_us (OUT_NIBBLE_DELAY); // here too?
         SetACK();
-        
         // then wait for BUSY to go UP 
-        nTimeout = 500000; // max wait: 5 s
+        nTimeout = 50000; // max wait: 5 s
         while ( in_BUSY==0 && (nTimeout--)>0 ) {
-            wait_us (10);
+            wait_us (100);
         }  
         if (nTimeout < 1) {
             ERR_PRINTOUT("Send error 1\n");
