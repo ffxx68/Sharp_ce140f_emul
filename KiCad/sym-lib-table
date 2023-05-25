@@ -1,8 +1,0 @@
-(sym_lib_table
-  (lib (name "sharp-ce140f-emul")(type "KiCad")(uri "${KIPRJMOD}/sharp-ce140f-emul.kicad_sym")(options "")(descr ""))
-  (lib (name "dk-lib")(type "KiCad")(uri "${KIPRJMOD}/dk-lib.kicad_sym")(options "")(descr "")(disabled))
-  (lib (name "NUCLEO-F401RE")(type "Legacy")(uri "${KIPRJMOD}/NUCLEO-F401RE/NUCLEO-F401RE.lib")(options "")(descr "")(disabled))
-  (lib (name "sharp-ce140f-emul_Page1-altium-import")(type "KiCad")(uri "${KIPRJMOD}/sharp-ce140f-emul_Page1-altium-import.kicad_sym")(options "")(descr "")(disabled))
-  (lib (name "sharp-ce140f-emul_v1-altium-import")(type "KiCad")(uri "${KIPRJMOD}/sharp-ce140f-emul_v1-altium-import.kicad_sym")(options "")(descr "")(disabled))
-  (lib (name "sharp-ce140f-emul_v1-eagle-import")(type "KiCad")(uri "${KIPRJMOD}/sharp-ce140f-emul_v1-eagle-import.kicad_sym")(options "")(descr "")(disabled))
-)

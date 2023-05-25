@@ -1,0 +1,42 @@
+**********************************************************************
+*  (C) Copyright 2020 Toshiba Electronic Devices & Storage Corporation
+*  Date:             20/05/2019
+*  File Name:        CUHS20S30.lib
+*  Part Number:      CUHS20S30
+*  Parameter Ver.:   Ver.1
+*  Simulator:        PSpice (OrCAD 17.2)
+*  Model Call Name:  DIODE_CUHS20S30
+*  TNOM:             25 degree
+*  Pin Assign:       1=Anode 2=Cathode
+*
+* Operation of this model has been verified only on the OrCAD.
+**********************************************************************
+.SUBCKT DIODE_CUHS20S30 1 2
+D1 1 2 D1
+C1 1 2 1e-13
+.MODEL D1 D
++ IS = 8.236e-05
++ N = 1.029
++ ISR = 1.5124e-05
++ NR = 1.2337
++ BV = 30
++ IBV = 5e-04
++ RS = 0.036914
++ TRS1 = 0.0066087
++ TRS2 = -2.2377e-05
++ CJO = 3.726e-10
++ VJ = 0.612
++ M = 0.58
++ FC = 0.5
++ TT = 0
++ EG = 0.57
++ XTI = 2.3
++ AF = 1
++ KF = 0
++ NBV = 1
++ IBVL = 0
++ NBVL = 1
++ TNOM = 25
+.ENDS
+
+

@@ -1,4 +1,0 @@
-(fp_lib_table
-  (lib (name "MyLibrary")(type "KiCad")(uri "${KIPRJMOD}/MyLibrary.pretty")(options "")(descr ""))
-  (lib (name "NUCLEO-F401RE")(type "KiCad")(uri "${KIPRJMOD}/NUCLEO-F401RE")(options "")(descr ""))
-)
