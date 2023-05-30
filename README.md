@@ -32,7 +32,7 @@ and here's a demo, using the LOAD and SAVE commands for example:
  
 [LOAD or SAVE demo](https://www.youtube.com/watch?v=3_DliJE_47g&t=2s)
 
-The complete KiCAD project is included here on github, but here's a direct link in case you would like to order some directly by the company used to manufacture the boards above:
+The complete KiCAD project is shared here on github ([KiCad project](https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/KiCad_v1)), but here's a direct link to the manufacturer project, ready for production, in case you would like to order some directly:
 
 [Sharp_ce140f_emul by AISLER](https://aisler.net/p/DIQRWUOC)
 
@@ -46,7 +46,9 @@ Since the Sharp PC uses a CMOS 5v logic, while the Nucleo board is a 3.3v device
 
 I initially struggled a lot, before I got the Nucleo board properly receive the Device Code from the PC, which is the first step of the communication handshake. At first, using the level converter on each data line, I always got a 0xFF (0x41 is expected instead, when a FILES command for example is issued on the Sharp-PC, to invoke the Disk Drive). In spite the converters are in principle bi-directional, after a number of trials and errors I found out that they kept a constant high value on Nucleo inputs, regardless of the Sharp setting a low, because of the normally high impedance of Sharp-PC outputs, I think.
 
-So, I decided to use the level converters only in the Nucleo-to-Sharp direction. I also configured Nucleo internal pull-down on each input line (45K resistor, as per datasheet) and added a 10K in series, as in the schematics above, to achieve the 5-to-3.3 divide in the opposite direction. This way, I reached a stage where the correct 0x41 device code, as well as the follow-up command sequence was received, but it also forced me to use different pins of the Nucleo board for the return lines (Nucleo-to-Sharp), converting them to 5v and issuing to the 11-pin connector through diodes to isolate them from the inputs (Sharp-to-Nucleo). See schematics above. Output and input stages are time-separated, and during output, input pins on Nucleo needs to be set to a PullNone (i.e. high impedance) mode.
+So, I decided to use the level converters only in the Nucleo-to-Sharp direction. I also configured Nucleo internal pull-down on each input line (45K resistor, as per datasheet) and added a 10K in series, as in the schematics above, to achieve the 5-to-3.3 divide in the opposite direction. This way, I reached a stage where the correct 0x41 device code, as well as the follow-up command sequence was received, but it also forced me to use different pins of the Nucleo board for the return lines (Nucleo-to-Sharp), converting them to 5v and issuing to the 11-pin connector through diodes to isolate them from the inputs (Sharp-to-Nucleo). See schematics. Output and input stages are time-separated, and during output, input pins on Nucleo needs to be set to a PullNone (i.e. high impedance) mode.
+
+Later, after initial batches of the PCB where shipped and tested by different users, an issue arised with some of the Sharp models ([Issue #4](https://github.com/ffxx68/Sharp_ce140f_emul/issues/4)). A review was needed, to use stroger Pull-up resistors, reducing them from the original 10K to 5K-Ohm. This looks like solving most of the problems, but probably a deeper review of the level conversion design is needed. Subject of a new project...
 
 About power, the Sharp and the Nucleo do not share the 5v power line, just gnd. This is to prevent the relatively low capacity internal coin cells to be drained by the Nucleo board. At present, the board is powered through its USB plug, but I plan to make it battery powered, maybe rechargeable.
 
