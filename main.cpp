@@ -395,8 +395,6 @@ void SendOutputData ( void ) {
         };
         //debug_log ( " %1X timeout 2 %d\n", (in_BUSY!=0), nTimeout);
 
-        // data successfully received by PC
-        // acknowledge before next nibble
         ResetACK();
     } 
     testTimer.stop();
@@ -588,11 +586,13 @@ void bitReady ( void ) {
 
 void startDeviceCodeSeq ( void ) {
     uint32_t nTimeout = 100;
+    debug_log ( "startDeviceCodeSeq start\n" );
     while ( ( in_D_OUT == 0 ) && (nTimeout--) ) {
         wait_us (BIT_DELAY_1);
     }
     wait_us (BIT_DELAY_1);
-    pc.putc('s'); // debug 
+    //pc.putc('s'); // debug 
+    debug_log ( "startDeviceCodeSeq in_D_OUT\n" );
     if ( in_D_OUT == 1 ) {
         // Device Code transfer starts with both X_OUT and DOUT high
         // (X_OUT high with DOUT low is for cassette write)
