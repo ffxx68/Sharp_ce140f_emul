@@ -512,7 +512,7 @@ void process_SAVE(int cmd) {
 }
 
 void process_DSKF(void) {
-        int diskspace = 4680; // 20488; // test examples
+        int diskspace = 65535 ;//4680; // 20488; // test examples
         debug_log ( "DSKF\n" ); 
         debug_log ( "diskspace %d\n",  diskspace);
 
