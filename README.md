@@ -36,6 +36,14 @@ The complete KiCAD project is shared here on github ([KiCad project](https://git
 
 [Sharp_ce140f_emul by AISLER](https://aisler.net/p/DIQRWUOC)
 
+A newer version of the board has been later designed, mainly to fix [Issue #4](https://github.com/ffxx68/Sharp_ce140f_emul/issues/4) of the original design:
+
+[Design updated - Board data for DipTrace; PLD data for GreenPAK](https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/Board_v1.5_Yamamura)
+
+![image](https://github.com/ffxx68/Sharp_ce140f_emul/assets/659557/f0aaea48-6eab-4ee4-bb78-c86369f2b7e5)
+
+Please refer to the owner of this design, for additional info: [Yamamura](ac_sent@yahoo.co.jp)
+
 ## Hardware interface notes
 
 Interface schematics (find complete KiCad project in the repo):
