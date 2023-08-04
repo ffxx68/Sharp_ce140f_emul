@@ -36,13 +36,13 @@ The complete KiCAD project is shared here on github ([KiCad project](https://git
 
 [Sharp_ce140f_emul by AISLER](https://aisler.net/p/DIQRWUOC)
 
-A newer version of the board has been later designed, mainly to fix [Issue #4](https://github.com/ffxx68/Sharp_ce140f_emul/issues/4) of the original design:
+A newer version of the board has been later designed, mainly to fix [Issue #4](https://github.com/ffxx68/Sharp_ce140f_emul/issues/4), which affected the original design:
 
-[Design updated - Board data for DipTrace; PLD data for GreenPAK](https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/Board_v1.5_Yamamura)
+[Design updated - Board data for DipTrace; PLD data for GreenPAK](https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/Board_v1.5_PoyokomaDanna)
 
 ![image](https://github.com/ffxx68/Sharp_ce140f_emul/assets/659557/f0aaea48-6eab-4ee4-bb78-c86369f2b7e5)
 
-Please refer to the owner of this design, for additional info: [Yamamura](ac_sent@yahoo.co.jp)
+He fundamentally replaced the original discrete level converter with a programmable device (Renesas SLG46826), and also added pull down resistors to the SEL1, SEL2, DOUT and BUSY lines of the 11-pin Sharp connector. Please refer to the owner of this design, for additional info: [PoyokomaDanna](ac_sent@yahoo.co.jp).
 
 ## Hardware interface notes
 
