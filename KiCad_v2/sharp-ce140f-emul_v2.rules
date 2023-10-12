@@ -11,154 +11,87 @@
     (via_costs 50)
     (plane_via_costs 5)
     (start_ripup_costs 100)
-    (start_pass_no 783)
+    (start_pass_no 245)
     (layer_rule F.Cu
       (active on)
       (preferred_direction horizontal)
       (preferred_direction_trace_costs 1.0)
-      (against_preferred_direction_trace_costs 2.2)
+      (against_preferred_direction_trace_costs 2.5)
     )
     (layer_rule B.Cu
       (active on)
       (preferred_direction vertical)
       (preferred_direction_trace_costs 1.0)
-      (against_preferred_direction_trace_costs 1.8)
+      (against_preferred_direction_trace_costs 1.7)
     )
   )
   (rule
-    (width 100.0)
+    (width 200.0)
     (clear 100.2)
-    (clear 50.0 (type smd_to_turn_gap))
-    (clear 200.2 (type default_Batt))
-    (clear 200.2 (type default_Power))
+    (clear 100.0 (type smd_to_turn_gap))
     (clear 25.0 (type smd_smd))
-    (clear 200.2 (type smd_Batt))
-    (clear 200.2 (type smd_Power))
-    (clear 200.2 (type "kicad_default"_Batt))
-    (clear 200.2 (type "kicad_default"_Power))
-    (clear 200.2 (type Batt_Batt))
-    (clear 200.2 (type Batt_Power))
-    (clear 200.2 (type Power_Power))
   )
-  (padstack "Via[0-1]_500:300_um"
+  (padstack "Via[0-1]_800:400_um"
     (shape
-      (circle F.Cu 500.0 0.0 0.0)
+      (circle F.Cu 800.0 0.0 0.0)
     )
     (shape
-      (circle B.Cu 500.0 0.0 0.0)
-    )
-    (attach off)
-  )
-  (padstack "Via[0-1]_1000:600_um"
-    (shape
-      (circle F.Cu 1000.0 0.0 0.0)
-    )
-    (shape
-      (circle B.Cu 1000.0 0.0 0.0)
-    )
-    (attach off)
-  )
-  (padstack "Via[0-1]_400:200_um"
-    (shape
-      (circle F.Cu 400.0 0.0 0.0)
-    )
-    (shape
-      (circle B.Cu 400.0 0.0 0.0)
+      (circle B.Cu 800.0 0.0 0.0)
     )
     (attach off)
   )
   (via 
-    "Via[0-1]_500:300_um" "Via[0-1]_500:300_um" default
+    "Via[0-1]_800:400_um" "Via[0-1]_800:400_um" default
   )
   (via 
-    "Via[0-1]_1000:600_um" "Via[0-1]_1000:600_um" default
+    "Via[0-1]_800:400_um-kicad_default" "Via[0-1]_800:400_um" "kicad_default"
   )
   (via 
-    "Via[0-1]_400:200_um" "Via[0-1]_400:200_um" default
-  )
-  (via 
-    "Via[0-1]_500:300_um-kicad_default" "Via[0-1]_500:300_um" "kicad_default"
-  )
-  (via 
-    "Via[0-1]_1000:600_um-kicad_default" "Via[0-1]_1000:600_um" "kicad_default"
-  )
-  (via 
-    "Via[0-1]_400:200_um-kicad_default" "Via[0-1]_400:200_um" "kicad_default"
-  )
-  (via 
-    "Via[0-1]_500:300_um-Batt" "Via[0-1]_500:300_um" Batt
-  )
-  (via 
-    "Via[0-1]_1000:600_um-Batt" "Via[0-1]_1000:600_um" Batt
-  )
-  (via 
-    "Via[0-1]_400:200_um-Batt" "Via[0-1]_400:200_um" Batt
-  )
-  (via 
-    "Via[0-1]_500:300_um-Power" "Via[0-1]_500:300_um" Power
-  )
-  (via 
-    "Via[0-1]_1000:600_um-Power" "Via[0-1]_1000:600_um" Power
-  )
-  (via 
-    "Via[0-1]_400:200_um-Power" "Via[0-1]_400:200_um" Power
+    "Via[0-1]_800:400_um-Power" "Via[0-1]_800:400_um" Power
   )
   (via_rule
-    default "Via[0-1]_400:200_um"
+    default "Via[0-1]_800:400_um"
   )
   (via_rule
-    "kicad_default" "Via[0-1]_500:300_um-kicad_default"
+    "kicad_default" "Via[0-1]_800:400_um-kicad_default"
   )
   (via_rule
-    Batt "Via[0-1]_1000:600_um-Batt"
-  )
-  (via_rule
-    Power "Via[0-1]_400:200_um-Power"
+    Power "Via[0-1]_800:400_um-Power"
   )
   (class default
-    "/HSE_OUT" "/HSE_IN" "Net-(D1-Pad1)" "USB_D+" "USB_D-" "Net-(D4-Pad1)" "unconnected-(J6-Pad10)" SWDIO
-    SWCLK "unconnected-(J3-Pad4)" PA8 "unconnected-(J3-Pad6)" /BOOT0 "unconnected-(SW1-Pad1)" "unconnected-(SW1-Pad4)" "unconnected-(SW1-Pad5)"
-    "SPI1_SCK" "SPI1_MISO" "SPI1_MOSI" "Net-(D2-Pad1)" "Net-(D3-Pad2)" "/mt_out2" /busy /dout
-    "/x_in" "/x_out" /din /ack /sel2 "unconnected-(J4-Pad1)" "SD_CS" "unconnected-(J4-Pad8)"
-    "unconnected-(J4-Pad9)" "SD_CD" PA0 "Net-(R5-Pad1)" "Net-(R6-Pad2)" PA2 PA3 PA4
-    PA5 PA9 PA10 PA15 "unconnected-(U2-Pad4)" "/usr_led" PB5 PB6
-    PB7 "Net-(J6-Pad2)" "Net-(J6-Pad4)" "Net-(J6-Pad6)" "unconnected-(J6-Pad7)" "unconnected-(J6-Pad8)" SWO /sel1
     (clearance_class default)
     (via_rule default)
     (rule
-      (width 100.0)
+      (width 200.0)
     )
     (circuit 
       (use_layer F.Cu B.Cu)
     )
   )
   (class "kicad_default"
+    +3.3VA "/HSE_OUT" "/HSE_IN" "Net-(D1-K)" VPP "USB_D+" "USB_D-" "Net-(D2-K)"
+    "Net-(D3-A)" SWDIO SWCLK "Net-(D4-K)" PA8 "unconnected-(J3-ID-Pad4)" /BOOT0 "unconnected-(J3-Shield-Pad6)"
+    "unconnected-(J4-DAT2-Pad1)" "unconnected-(J4-DAT1-Pad8)" "SPI1_SCK" "SPI1_MISO" "SPI1_MOSI" "unconnected-(J4-DET_B-Pad9)" "Net-(J6-Pin_2)" /vccb
+    "/mt_out2" /vgg /busy /dout "/x_in" "/x_out" /din /ack
+    /sel2 "Net-(J6-Pin_4)" "SD_CS" "Net-(J6-Pin_6)" "unconnected-(J6-Pin_7-Pad7)" "SD_CD" PA0 "unconnected-(J6-Pin_8-Pad8)"
+    "unconnected-(J6-Pin_10-Pad10)" PA2 PA3 PA4 PA5 PA9 PA10 PA15
+    "Net-(U4-PROG)" "/usr_led" PB5 PB6 PB7 "Net-(U4-STAT)" "unconnected-(S1-NC-Pad1)" "unconnected-(S1-PadMP2)"
+    "unconnected-(S1-PadMP3)" SWO /sel1 "unconnected-(S1-PadMP4)" "unconnected-(U2-NRST-Pad4)" "unconnected-(S1-PadMP1)"
     (clearance_class "kicad_default")
     (via_rule kicad_default)
     (rule
-      (width 100.0)
-    )
-    (circuit 
-      (use_layer F.Cu B.Cu)
-    )
-  )
-  (class Batt
-    VCC "/V_BAT"
-    (clearance_class Batt)
-    (via_rule Batt)
-    (rule
-      (width 800.0)
+      (width 200.0)
     )
     (circuit 
       (use_layer F.Cu B.Cu)
     )
   )
   (class Power
-    GND +3V3 +3.3VA VPP +5V /vccb /vgg
+    GND VCC +3V3 +5V "/V_BAT"
     (clearance_class Power)
     (via_rule Power)
     (rule
-      (width 200.0)
+      (width 400.0)
     )
     (circuit 
       (use_layer F.Cu B.Cu)

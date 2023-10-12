@@ -1,2 +1,4 @@
 (fp_lib_table
+  (version 7)
+  (lib (name "ce140f_library")(type "KiCad")(uri "${KIPRJMOD}/PCM12SMTR/KiCad/ce140f_library.pretty")(options "")(descr ""))
 )
