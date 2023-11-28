@@ -1,9 +1,0 @@
-EESchema-DOCLIB  Version 2.0
-#
-$CMP PCM12SMTR
-D Slide Switches 0.3A SPDT ON-ON
-K
-F https://www.ckswitches.com/media/1424/pcm.pdf
-$ENDCMP
-#
-#End Doc Library

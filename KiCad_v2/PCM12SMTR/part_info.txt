@@ -1,9 +1,0 @@
-Manufacturer=C & K COMPONENTS
-PartNumber=PCM12SMTR
-PartCategory=Switch
-PackageCategory=Other
-PinCount=7
-Version=3.3
-Released=2020-10-21 11:17:04
-Downloaded=2023-10-10 15:45:33
-3D=Y
