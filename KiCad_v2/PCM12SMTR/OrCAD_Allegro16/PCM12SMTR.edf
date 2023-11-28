@@ -1,0 +1,150 @@
+
+(EDIF
+  (rename &PCM12SMTR "PCM12SMTR")
+  (EDIFVersion 2 0 0)
+  (EDIFLevel 0)
+  (keywordMap (keywordLevel 0))
+  (status
+    (written
+      (timestamp 2023 10 10 15 45 33)
+      (dataOrigin "13139731/1063872/2.50/7/2/Switch")
+      (program "SamacSys ECAD Model PCM12SMTR"
+        (version "3.3"))))
+  (library
+  (rename &PCM12SMTR "PCM12SMTR")
+    (EDIFLevel 0)
+    (technology
+      (numberDefinition (scale 1 (e 254 -6) (unit DISTANCE)))
+      (userData GRIDRESOLUTION (integer 50 50))
+      (figureGroup DEFAULT (pathWidth 10) (textHeight 100))
+      (figureGroup PROPERTY (pathWidth 10) (textHeight 90))
+      (figureGroup PINNUMBER (pathWidth 10) (textHeight 90))
+      (figureGroup PINNAME (pathWidth 10) (textHeight 90))
+      (figureGroup COMMENT (pathWidth 10) (textHeight 90))
+      (figureGroup PIN (pathWidth 10) (textHeight 90))
+      (figureGroup GRAPHIC (pathWidth 10) (textHeight 100))
+    )
+    (cell
+      (rename &PCM12SMTR "PCM12SMTR")
+      (cellType GENERIC)
+      (view
+        (rename NORMAL "Normal")
+        (viewType SCHEMATIC)
+        (interface
+          (designator "S")
+          (property (rename PACKAGENAME "PackageName") (string "PCM12SMTR"))
+          (property (rename ISHETEROGENEOUS "IsHeterogeneous") (string "False"))
+          (property (rename DEVICESINVIEW "DevicesInView") (string "1"))
+          (property (rename DEVICESINPACKAGE "DevicesInPackage") (string "1"))
+          (property (rename DEVICEDESIGNATOR "DeviceDesignator") (string "A"))
+          (property (rename DEVICENUMBERING "DeviceNumbering") (string "Alpha"))
+          (property (rename PCB_32_FOOTPRINT "PCB Footprint") (string "PCM12SMTR"))
+          (property (rename &Mouser_Part_Number "Mouser Part Number") (string "611-PCM12SMTR"))
+          (property (rename &Mouser_Price_Stock "Mouser Price/Stock") (string "https://www.mouser.co.uk/ProductDetail/CK/PCM12SMTR?qs=mfFuHy8STfL3qrPSfCHA7w%3D%3D"))
+          (property (rename &Manufacturer_Name "Manufacturer_Name") (string "C & K COMPONENTS"))
+          (property (rename &Manufacturer_Part_Number "Manufacturer_Part_Number") (string "PCM12SMTR"))
+          (property (rename &Description "Description") (string "Slide Switches 0.3A SPDT ON-ON"))
+          (property (rename &Datasheet_Link "Datasheet Link") (string "https://www.ckswitches.com/media/1424/pcm.pdf"))
+          (property (rename &Height "Height") (string "1.4 mm"))
+          (property (rename &_60__32_VALUE_32__62_ "Value") (string "PCM12SMTR"))
+          (property (rename VALUE "Value") (string "Value"))
+          (property (rename &NC "NC") (string "MH1,MH2"))
+          (port
+            (rename &NC "NC")
+            (designator "1")
+            (property (rename ORDER "Order") (string "0") (owner "OrCAD"))
+          )
+          (port
+            (rename &COM "COM")
+            (designator "2")
+            (property (rename ORDER "Order") (string "1") (owner "OrCAD"))
+          )
+          (port
+            (rename &NO "NO")
+            (designator "3")
+            (property (rename ORDER "Order") (string "2") (owner "OrCAD"))
+          )
+          (port
+            (rename &MP1 "MP1")
+            (designator "MP1")
+            (property (rename ORDER "Order") (string "3") (owner "OrCAD"))
+          )
+          (port
+            (rename &MP2 "MP2")
+            (designator "MP2")
+            (property (rename ORDER "Order") (string "4") (owner "OrCAD"))
+          )
+          (port
+            (rename &MP3 "MP3")
+            (designator "MP3")
+            (property (rename ORDER "Order") (string "5") (owner "OrCAD"))
+          )
+          (port
+            (rename &MP4 "MP4")
+            (designator "MP4")
+            (property (rename ORDER "Order") (string "6") (owner "OrCAD"))
+          )
+          (symbol
+            (portImplementation
+              (name &NC (display PINNAME))
+              (keywordDisplay DESIGNATOR (display PINNUMBER))
+              (figure PIN (path (pointList (pt -200 -100) (pt 0 -100))))
+              (connectLocation (figure GRAPHIC (dot (pt -200 -100))))
+            )
+            (portImplementation
+              (name &COM (display PINNAME))
+              (keywordDisplay DESIGNATOR (display PINNUMBER))
+              (figure PIN (path (pointList (pt -200 -200) (pt 0 -200))))
+              (connectLocation (figure GRAPHIC (dot (pt -200 -200))))
+            )
+            (portImplementation
+              (name &NO (display PINNAME))
+              (keywordDisplay DESIGNATOR (display PINNUMBER))
+              (figure PIN (path (pointList (pt -200 -300) (pt 0 -300))))
+              (connectLocation (figure GRAPHIC (dot (pt -200 -300))))
+            )
+            (portImplementation
+              (name &MP1 (display PINNAME))
+              (keywordDisplay DESIGNATOR (display PINNUMBER))
+              (figure PIN (path (pointList (pt -200 -400) (pt 0 -400))))
+              (connectLocation (figure GRAPHIC (dot (pt -200 -400))))
+            )
+            (portImplementation
+              (name &MP2 (display PINNAME))
+              (keywordDisplay DESIGNATOR (display PINNUMBER))
+              (figure PIN (path (pointList (pt 600 -100) (pt 800 -100))))
+              (connectLocation (figure GRAPHIC (dot (pt 800 -100))))
+            )
+            (portImplementation
+              (name &MP3 (display PINNAME))
+              (keywordDisplay DESIGNATOR (display PINNUMBER))
+              (figure PIN (path (pointList (pt 600 -200) (pt 800 -200))))
+              (connectLocation (figure GRAPHIC (dot (pt 800 -200))))
+            )
+            (portImplementation
+              (name &MP4 (display PINNAME))
+              (keywordDisplay DESIGNATOR (display PINNUMBER))
+              (figure PIN (path (pointList (pt 600 -300) (pt 800 -300))))
+              (connectLocation (figure GRAPHIC (dot (pt 800 -300))))
+            )
+            (figure GRAPHIC
+              (figureGroupOverride GRAPHIC
+                (pathWidth 10))
+              (path
+                (pointList
+                  (pt 0 0)
+                  (pt 600 0)
+                  (pt 600 -500)
+                  (pt 0 -500)
+                  (pt 0 0)
+                )
+              )
+            )
+            (keywordDisplay DESIGNATOR (display PROPERTY (justify LOWERLEFT) (orientation R0) (origin (pt 650 130))))
+            (propertyDisplay &_60__32_VALUE_32__62_ (display PROPERTY (justify LOWERLEFT) (orientation R0) (origin (pt 650 30))))
+          )
+        )
+      )
+    )
+  )
+)

@@ -1,0 +1,100 @@
+
+(rules PCB sharp-ce140f-emul_v2
+  (snap_angle 
+    fortyfive_degree
+  )
+  (autoroute_settings
+    (fanout off)
+    (autoroute on)
+    (postroute on)
+    (vias on)
+    (via_costs 50)
+    (plane_via_costs 5)
+    (start_ripup_costs 100)
+    (start_pass_no 245)
+    (layer_rule F.Cu
+      (active on)
+      (preferred_direction horizontal)
+      (preferred_direction_trace_costs 1.0)
+      (against_preferred_direction_trace_costs 2.5)
+    )
+    (layer_rule B.Cu
+      (active on)
+      (preferred_direction vertical)
+      (preferred_direction_trace_costs 1.0)
+      (against_preferred_direction_trace_costs 1.7)
+    )
+  )
+  (rule
+    (width 200.0)
+    (clear 100.2)
+    (clear 100.0 (type smd_to_turn_gap))
+    (clear 25.0 (type smd_smd))
+  )
+  (padstack "Via[0-1]_800:400_um"
+    (shape
+      (circle F.Cu 800.0 0.0 0.0)
+    )
+    (shape
+      (circle B.Cu 800.0 0.0 0.0)
+    )
+    (attach off)
+  )
+  (via 
+    "Via[0-1]_800:400_um" "Via[0-1]_800:400_um" default
+  )
+  (via 
+    "Via[0-1]_800:400_um-kicad_default" "Via[0-1]_800:400_um" "kicad_default"
+  )
+  (via 
+    "Via[0-1]_800:400_um-Power" "Via[0-1]_800:400_um" Power
+  )
+  (via_rule
+    default "Via[0-1]_800:400_um"
+  )
+  (via_rule
+    "kicad_default" "Via[0-1]_800:400_um-kicad_default"
+  )
+  (via_rule
+    Power "Via[0-1]_800:400_um-Power"
+  )
+  (class default
+    (clearance_class default)
+    (via_rule default)
+    (rule
+      (width 200.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+  (class "kicad_default"
+    +3.3VA "/HSE_OUT" "/HSE_IN" "Net-(D1-K)" VPP "USB_D+" "USB_D-" "Net-(D2-K)"
+    "Net-(D3-A)" SWDIO SWCLK "Net-(D4-K)" PA8 "unconnected-(J3-ID-Pad4)" /BOOT0 "unconnected-(J3-Shield-Pad6)"
+    "unconnected-(J4-DAT2-Pad1)" "unconnected-(J4-DAT1-Pad8)" "SPI1_SCK" "SPI1_MISO" "SPI1_MOSI" "unconnected-(J4-DET_B-Pad9)" "Net-(J6-Pin_2)" /vccb
+    "/mt_out2" /vgg /busy /dout "/x_in" "/x_out" /din /ack
+    /sel2 "Net-(J6-Pin_4)" "SD_CS" "Net-(J6-Pin_6)" "unconnected-(J6-Pin_7-Pad7)" "SD_CD" PA0 "unconnected-(J6-Pin_8-Pad8)"
+    "unconnected-(J6-Pin_10-Pad10)" PA2 PA3 PA4 PA5 PA9 PA10 PA15
+    "Net-(U4-PROG)" "/usr_led" PB5 PB6 PB7 "Net-(U4-STAT)" "unconnected-(S1-NC-Pad1)" "unconnected-(S1-PadMP2)"
+    "unconnected-(S1-PadMP3)" SWO /sel1 "unconnected-(S1-PadMP4)" "unconnected-(U2-NRST-Pad4)" "unconnected-(S1-PadMP1)"
+    (clearance_class "kicad_default")
+    (via_rule kicad_default)
+    (rule
+      (width 200.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+  (class Power
+    GND VCC +3V3 +5V "/V_BAT"
+    (clearance_class Power)
+    (via_rule Power)
+    (rule
+      (width 400.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+)
