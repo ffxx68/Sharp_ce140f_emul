@@ -627,15 +627,10 @@ void process_PRINT( int cmd ) {
             int buf_pos = 0;
             debug_log ( " current file #%d\n", cur_fn+2); 
             debug_log ( " inBufPosition %d\n", inBufPosition); 
-            // skip empty message (CRLF only) ????
-            //if (!(inDataBuf[1] == 0x0A && inDataBuf[0] == 0x0D)) 
             {
                 // similar to ascii-type SAVE
                 while ( buf_pos < inBufPosition - 2 ) { // omit 0x00+checksum
-                    // skip an empty message (CRLF only) ??
-                    //if (!(  (buf_pos == 0 && inDataBuf[buf_pos] == 0x0D)
-                    //    ||(buf_pos == 1 && inDataBuf[buf_pos] == 0x0A)))
-                        fputc ((int)(inDataBuf[buf_pos]), open_files[cur_fn].fp) ;
+                    fputc ((int)(inDataBuf[buf_pos]), open_files[cur_fn].fp) ;
                     buf_pos ++;
                     open_files[cur_fn].pos++; // store current file position in the array
                 }

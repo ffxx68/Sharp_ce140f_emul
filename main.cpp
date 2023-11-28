@@ -428,7 +428,8 @@ void inNibbleReady ( void ) {
             highNibbleIn = false;
             inDataBuf[inBufPosition] = (inNibble << 4) + inDataBuf[inBufPosition];
             checksum = (inDataBuf[inBufPosition] + checksum) & 0xff;
-            debug_log(" %u:%02X [%02X]\n", inBufPosition, inDataBuf[inBufPosition], checksum ) ;
+            debug_log(" %u:0x%02X [%02X]\n", 
+                inBufPosition, inDataBuf[inBufPosition], checksum ) ;
             inBufPosition++; // should be circular for safety; may cut off data!
             // Data processing starts after last byte (timeout reset after each byte received) 
             inDataReadyTimeout.attach_us( &inDataReady, IN_DATAREADY_TIMEOUT );
