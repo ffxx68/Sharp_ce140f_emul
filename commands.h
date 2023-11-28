@@ -14,7 +14,7 @@
 #define IN_BUF_SIZE 256
 #endif
 
-#define ERR_PRINTOUT(x) debug_log(x); pc.printf(x)
+#define ERR_PRINTOUT(x) debug_log("ERR %s",x); pc.printf(x)
 #define ERR_SD_CARD_NOT_PRESENT "SD Card not present!\n"
 #define SD_HOME "/sd/"
 #define MAX_N_FILES 6 

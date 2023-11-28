@@ -589,6 +589,7 @@ void process_OPEN( void ) {
             break;
         } 
     }
+    debug_log("fp %x", fp);
     if ( fp == NULL ) {
         ERR_PRINTOUT("fopen error\n");
         outDataAppend(0xFF);
@@ -626,20 +627,21 @@ void process_PRINT( int cmd ) {
             int buf_pos = 0;
             debug_log ( " current file #%d\n", cur_fn+2); 
             debug_log ( " inBufPosition %d\n", inBufPosition); 
-            // skip empty message (CRLF only)
-            if (!(inDataBuf[1] == 0x0A && inDataBuf[0] == 0x0D)) {
-                // similar to SAVE
+            // skip empty message (CRLF only) ????
+            //if (!(inDataBuf[1] == 0x0A && inDataBuf[0] == 0x0D)) 
+            {
+                // similar to ascii-type SAVE
                 while ( buf_pos < inBufPosition - 2 ) { // omit 0x00+checksum
-                    // skip an empty message (CRLF only)
-                    if (!(  (buf_pos == 0 && inDataBuf[buf_pos] == 0x0D)
-                        ||(buf_pos == 1 && inDataBuf[buf_pos] == 0x0A)))
+                    // skip an empty message (CRLF only) ??
+                    //if (!(  (buf_pos == 0 && inDataBuf[buf_pos] == 0x0D)
+                    //    ||(buf_pos == 1 && inDataBuf[buf_pos] == 0x0A)))
                         fputc ((int)(inDataBuf[buf_pos]), open_files[cur_fn].fp) ;
                     buf_pos ++;
                     open_files[cur_fn].pos++; // store current file position in the array
                 }
                 if ( inDataBuf[inBufPosition-3] != 0x0A ) {
                     // append line termination, when missing from the message
-                    debug_log ( " appending CFLF\n");
+                    debug_log ( " buf_pos: %i; appending CFLF\n", buf_pos);
                     fputc (0X0D, open_files[cur_fn].fp); 
                     fputc (0X0A, open_files[cur_fn].fp);
                 }
@@ -669,7 +671,6 @@ void process_INPUT( int cmd ) {
     switch (cmd) {
         case 0x13: // string
         case 0x14: // number
-        case 0x20: // number array
         { 
             outDataAppend(0x00);
             char c;
@@ -679,7 +680,7 @@ void process_INPUT( int cmd ) {
             do {
                 c=fgetc(open_files[cur_fn].fp);
                 if ( c == 0xFF ) {
-                    ERR_PRINTOUT( "fgetc 0xFF\n");
+                    ERR_PRINTOUT( ">>fgetc 0xFF\n");
                     outDataAppend(0xFF);
                     break;        
                 }
@@ -689,7 +690,8 @@ void process_INPUT( int cmd ) {
             if (c == EOF)
                 debug_log ("EOF!\n");
             else
-                debug_log ("line: <%s>\n", line);            sendString(line);
+                debug_log ("line: <%s>\n", line);            
+            sendString(line);
             outDataAppend(0x00);
             outDataAppend(out_checksum);
             outDataAppend(0x00);
