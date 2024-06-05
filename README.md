@@ -81,11 +81,11 @@ Being this a work in progress, I recommend using the source code as the ultimate
 
 The complied firmware binaries are shared [here](https://github.com/ffxx68/Sharp_ce140f_emul/releases) as well, ready for begin uploaded onto the board. As with any Nucleo board, the fw upload procedure is to plug your board to the USB and just upload (drag&drop) the .bin file on the device, which has appeared as a (virtual) disk. This is for Windows... not sure how to do it in Linux, sorry.
 
-If one wishes to build his firmwer from code, this is possible using the standard methods offered by the online [MBed Keil Studio IDE](https://studio.keil.arm.com) - importing this complete GitHub repository in a new project and selecting the NUCLEO-L432KC as the target board for it. Then, build. Please refer to MBed Keil Studio documentation, for further details about how to proceed.
+If one wishes to build his firmware from code, this is possible using the standard methods offered by the online [MBed Keil Studio IDE](https://studio.keil.arm.com) - importing this complete GitHub repository in a new project and selecting the NUCLEO-L432KC as the target board for it. Then, build. Please refer to MBed Keil Studio documentation, for further details about how to proceed.
 
 The MBed library included now with this repository is the (formally unsupported) version 2. This choice was initially imposed by the early prototype on the L053R8 by the small footprint it offers, compared to latest Mbed-OS version 6 (even with a "bare metal" build profile). The v6 build simply didn't fit in the L053R8. Then, work shifted to hardware, while software stayed on v2. An upgrade to v6 with the larger L432KC memory is possible, sooner or later...
 
-he SD File System library is also a small revision of [this one](https://os.mbed.com/cookbook/SD-Card-File-System) (the original code didn't work out of the box, to me). Moving to v6 and standard SD libs might solve these issues, but for the timebeing I'm using a local copy. Also, it didn't compile on the latest revision of the MBed library, so I had to rollback MBed (while still on v2) to revision #137. In any case, all of the above is already included in present repo, which compiles as is - no intervention needed.
+The SD File System library is also a small revision of [this one](https://os.mbed.com/cookbook/SD-Card-File-System) (the original code didn't work out of the box, to me). Moving to v6 and standard SD libs might solve these issues, but for the timebeing I'm using a local copy. Also, it didn't compile on the latest revision of the MBed library, so I had to rollback MBed (while still on v2) to revision #137. In any case, all of the above is already included in present repo, which compiles as is - no intervention needed.
 
 The emulation software in itself is still under development, as each command from the Sharp (DSKF, FILES, SAVE, LOAD, etc.) needs data retrieved from the SD to be properly formatted back to be accepted by the Sharp. This is a rather lengthy process, involving a big deal of reverse engineering. So, stay tuned for updates...
 
@@ -103,7 +103,7 @@ https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/KiCad_v2
 but it's very far from the making, yet. Firmware would need to be revised too.
 
 ## Acknowledgements
-Many have have contributed with support and suggestin to the stange where this project has arrived. 
+Many have have contributed with support and suggestions to this project. 
 
 First of all let me mention Remy, author of the https://pockemul.com/ emulator, who originally reverse engineered the CE-140F protocol.
 
