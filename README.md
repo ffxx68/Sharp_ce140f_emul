@@ -87,6 +87,8 @@ The MBed library included now with this repository is the (formally unsupported)
 
 The SD File System library is also a small revision of [this one](https://os.mbed.com/cookbook/SD-Card-File-System) (the original code didn't work out of the box, to me). Moving to v6 and standard SD libs might solve these issues, but for the timebeing I'm using a local copy. Also, it didn't compile on the latest revision of the MBed library, so I had to rollback MBed (while still on v2) to revision #137. In any case, all of the above is already included in present repo, which compiles as is - no intervention needed.
 
+*NOTE* - The MBed online tools I have used to compile this project [will reach end of life in July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644).  I have no plan at presento to migrate to up-to-date tools (as suggested there). If anyone is willing to do so... he/she is welcome!
+
 The emulation software in itself is still under development, as each command from the Sharp (DSKF, FILES, SAVE, LOAD, etc.) needs data retrieved from the SD to be properly formatted back to be accepted by the Sharp. This is a rather lengthy process, involving a big deal of reverse engineering. So, stay tuned for updates...
 
 ## Evolutions
