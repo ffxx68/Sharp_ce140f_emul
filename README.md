@@ -1,18 +1,13 @@
 # Sharp_ce140f_emul
-Sharp CE-140F disk drive emulator with an ST-Nucleo board
+A hardware module emulating the Sharp CE-140F disk drive, using an SD-Card and an STM32 Nucleo microcontroller
 
-This is an hardware module emulating the Sharp CE-140F disk drive with an SD-Card, using an STM32 microcontroller to 
-interface with a Sharp Pocket Computer (PC) through its proprietary 11-pin interface.
+What I think my Sharp-PC was missing the most at the time (I'm talking about the '80s!) was a quick and convenient way to store and retrieve programs to and from its memory. Entering a BASIC listing by hand has always been the most frustrating task, in the early days of home computing. Magnetic cassettes using a standard record player used to be the cheapets and most common storage medium back then (and a software-emulated cassette interface has been developed too - [PocketTools](http://pocket.free.fr/html/soft/pocket-tools_e.html)), but using disks was something definetly different!
 
-What I think the Sharp-PC was missing the most (like any retro computers from the 80's) is a quick and convenient way to store and retrieve programs to and from its memory. Entering a BASIC listing by hand has always been the most frustrating task, in the early days of home computing. Yes, a software-emulated cassette interface does exist already, but disk storage is way much better! 
+The Sharp CE-140F Disk Driver was a rare and expensive extension for the Sharp Pocket PCs, compatible with several models:
 
-The Sharp CE140-F Disk Driver was a rare and expensive extension, compatible with several of the Sharp-PC models:
+PC-1280, PC-1280(Jap), PC-1285, PC-1403, PC-1403H, PC-1425, PC-1425(Jap), PC-1460, PC-1460(Jap), PC-1470U, PC-1475, PC-1475(Jap), EL-5500III, PC-E500, PC-E500(Jap), PC-E500S, PC-E550, PC-E650, PC-U6000. As well as the PC-1360, PC-1360K, PC-1365 and PC-1365K after 1986 (see also: [pocket.free.fr](http://pocket.free.fr/html/sharp/ce-140f_e.html?fbclid=IwAR3U31Bk95W-eKc_V7EStOoxpfgk6qsZ3UOhHXM6cb7czv4wsmH_SPU4H-8)).
 
-PC-1280, PC-1280(Jap), PC-1285, PC-1403, PC-1403H, PC-1425, PC-1425(Jap), PC-1460, PC-1460(Jap), PC-1470U, PC-1475, PC-1475(Jap), EL-5500III, PC-E500, PC-E500(Jap), PC-E500S, PC-E550, PC-E650, PC-U6000. As well as the PC-1360, PC-1360K, PC-1365 and PC-1365K after 1986. 
-
-See also: [pocket.free.fr](http://pocket.free.fr/html/sharp/ce-140f_e.html?fbclid=IwAR3U31Bk95W-eKc_V7EStOoxpfgk6qsZ3UOhHXM6cb7czv4wsmH_SPU4H-8)
-
-This interface is a cheap alternative, to effectively have disk file management on the Sharp PC.
+The interface presented here is an emulated hardware alternative to the real Sharp CE-140F, to get a fully functional disk file management on Sharp PCs.
 
 ## The PCB board
 
@@ -28,9 +23,10 @@ Here's a demonstration video, using the LOAD and SAVE commands for example, perf
  
 [LOAD or SAVE demo](https://www.youtube.com/watch?v=3_DliJE_47g&t=2s)
 
-The complete KiCAD project is public ([KiCad v1 project](https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/KiCad_v1)), while at the following link there's the PCB manufacturer's project, ready for production, in case you would like to order some directly:
+The complete KiCAD project is public ([KiCad v1 project](https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/KiCad_v1)), while at the following link there's the PCB manufacturer's project, ready for production, in case you wish to order some directly:
 
 [Sharp_ce140f_emul by AISLER](https://aisler.net/p/DIQRWUOC)
+[Sharp_ce140f_emul by PCBWay](https://www.pcbway.com/project/shareproject/Sharp_CE_140F_Emulator_0e4ce820.html)
 
 ## Hardware interface notes
 
