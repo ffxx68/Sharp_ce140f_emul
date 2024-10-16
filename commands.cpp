@@ -6,7 +6,7 @@
 extern void debug_log(const char *fmt, ...);
 extern void debug_hex(volatile uint8_t *buf, volatile uint16_t len);
 extern void outDebugDump( void );
-extern RawSerial         pc;
+extern RawSerial pc;
 extern volatile uint16_t outDataGetPosition;
 
 // shared over different threads
@@ -512,11 +512,29 @@ void process_SAVE(int cmd) {
 }
 
 void process_DSKF(void) {
-        int diskspace = 65535 ;//4680; // 20488; // test examples
-        debug_log ( "DSKF\n" ); 
-        debug_log ( "diskspace %d\n",  diskspace);
+        uint8_t dn = inDataBuf[1]; // N from command DSKF(N)
+        uint32_t diskspace = 65535;
+        debug_log ( "DSKF %d\n", dn ); 
 
-        // we should calculate actual disk free space here...
+        if ( dn == 2 ) { // returns a dummy value (testing return lines with 0xFFFF)
+            diskspace = 65535; 
+            debug_log ("dummy diskspace %d\n", diskspace);
+        } else {
+            FATFS* fs;
+            DWORD fre_clust;
+            debug_log ("retrieveing free clusters...\n");
+            f_getfree("0:",&fre_clust,&fs); 
+            debug_log ("free clusters %d; clust size %d\n", fs->free_clust, fs->csize);
+            uint64_t freeMb = (uint64_t)fs->csize * (uint64_t)fs->free_clust
+            #if _MAX_SS != 512
+                    *(fs->ssize)/1048576;
+            #else
+                    *512/1048576;
+            #endif
+            diskspace = (uint32_t)freeMb; // disk free space
+            debug_log ("SD free Mb %d\n", diskspace);
+        }
+        
         outDataAppend(CheckSum(0x00));
         outDataAppend(CheckSum(diskspace & 0xff));  // number of bytes 
         outDataAppend(CheckSum((diskspace >> 8) & 0xff));  // number of 256Bytes free sectors
