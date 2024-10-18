@@ -1,5 +1,6 @@
 #include "commands.h"
 #include "SDFileSystem.h"
+#include "errno.h"
 #include <cstdint>
 
 // from other modules
@@ -35,6 +36,9 @@ int      fileCount;
 uint8_t  FileName[17];
 int      file_size;
 int      file_pos = 0;
+
+Timeout  watchdogTimer;
+#define  LOAD_WD_TIMEOUT 3   
 
 // SD Card (SDFileSystem library)
 #if defined TARGET_NUCLEO_L053R8
@@ -230,7 +234,19 @@ int getFileSize(FILE *fp) {
     int size = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     return size;
-};
+}
+
+/* Closing a file during ASCII LOAD operations after a timeout
+*  Needed in case Sharp gets an error during LOAD and doesn't issue
+*  any more a 0x12 command to get next line, while the file is open
+*/
+void loadWatchdog (void) {
+    debug_log ( "loadWatchdog triggered\n");
+    if ( fp != NULL ) { 
+        debug_log ( "closing file <%d>...\n", fp );
+        fclose ( fp );
+    }
+}
 
 void process_LOAD(uint8_t cmd) {
     debug_log ( "LOAD 0x%02X\n", cmd); 
@@ -266,10 +282,17 @@ void process_LOAD(uint8_t cmd) {
             sprintf ((char*)FileName, "%s%s", SD_HOME, tmpFile);
             //pc.printf((char*)FileName);
             debug_log ( "opening <%s>\n", FileName );
-            if ( fp != NULL ) fclose ( fp ); // just in case...
+            if ( fp != NULL ) { // just in case...
+                debug_log ( "file alredy open <%d>, closing...\n", fp );
+                if ( fclose ( fp ) != 0 ) 
+                   ERR_PRINTOUT("fclose error\n");
+            }
             fp = fopen((char*)FileName, "r"); // this needs to stay open until EOF
             if ( fp == NULL ) {
                 ERR_PRINTOUT("fopen error\n");
+                char errstr[20];
+                sprintf (errstr, "errno %d\n", errno);
+                ERR_PRINTOUT(errstr);
                 break;
             }
             file_size = getFileSize(fp);
@@ -321,6 +344,16 @@ void process_LOAD(uint8_t cmd) {
             // or end-of-file (EOF)
             // Start at 0x10 ??
             outDataAppend(0x00);
+            if (fp == NULL){
+                ERR_PRINTOUT("File is not open. Watchdog triggered?");
+                outDataAppend(CheckSum(0x1A));  // 0x1A pour fin de fichier
+                outDataAppend(out_checksum);
+                outDataAppend(0x00);
+                break;
+            }
+            // start a watchdog, while waiting for next 0x12 to come
+            // (if not received within a timeout, close the file)
+            watchdogTimer.attach( &loadWatchdog, LOAD_WD_TIMEOUT ); 
             do {
                 c=fgetc(fp);
                 file_pos++;
@@ -330,6 +363,7 @@ void process_LOAD(uint8_t cmd) {
                 if (c == EOF) {
                     debug_log ("EOF\n");
                     outDataAppend(CheckSum(0x1A));  // 0x1A pour fin de fichier
+                    watchdogTimer.detach(); // remove watchdog
                     if ( fp != NULL ) fclose ( fp );
                 }
             } else
