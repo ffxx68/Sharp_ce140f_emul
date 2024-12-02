@@ -712,16 +712,15 @@ void process_INPUT( int cmd ) {
         open_files[cur_fn].fp,
         open_files[cur_fn].mode, 
         open_files[cur_fn].pos);
-    
     // check if file mode is coherent with INPUT?
     // Similar to LOAD (ascii) - move common parts to functions?
     switch (cmd) {
         case 0x13: // string
-        case 0x14: // number
+        case 0x14: // single number
         { 
             outDataAppend(0x00);
             char c;
-            char line [82];
+            char line [82]; // what for longer ones?
             line[0]=0x00;
             // Similar to a 'LOAD ascii' (one line)
             do {
@@ -739,6 +738,38 @@ void process_INPUT( int cmd ) {
             else
                 debug_log ("line: <%s>\n", line);            
             sendString(line);
+            outDataAppend(0x00);
+            outDataAppend(out_checksum);
+            outDataAppend(0x00);
+            break;
+        }
+        case 0x20: { // number array -- all in one string! 
+            outDataAppend(0x00);
+            char c;
+            char line [82]; // what for longer ones?
+            line[0]=0x00;
+            debug_log ("testing 0x%02X...", open_files[cur_fn].fp);
+            if ( ftell(open_files[cur_fn].fp) >= 0) {
+                debug_log (" is open\n");
+            } else {
+                ERR_PRINTOUT( "File is NOT open!\n");
+                outDataAppend(0xFF);
+                break;
+            }
+            int f;
+            do {
+                f=fgetc(open_files[cur_fn].fp); // !!! RETURNING 0xFF at first read, why ???
+                char c = char(f);
+                if (f != EOF) // skip this
+                    outDataAppend(CheckSum(c));
+                strncat (line,&c,1);
+                if ( c == 0x0A ) {
+                    debug_log ("line: <%s>\n", line); 
+                    line[0] = 0; // reset
+                }
+                open_files[cur_fn].pos++;
+            } while ((f != EOF));
+            debug_log ("EOF!\n");
             outDataAppend(0x00);
             outDataAppend(out_checksum);
             outDataAppend(0x00);

@@ -1,4 +1,3 @@
-////////////////////////////////////////////////////////
 // Sharp CE-140F diskette emulator
 // 
 // Reverse engineering by contact@pockemul.com
