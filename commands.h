@@ -6,8 +6,8 @@
 
 // communication data depth (max file size during LOAD)
 #if defined TARGET_NUCLEO_L432KC
-#define OUT_BUF_SIZE 20000
-#define IN_BUF_SIZE 1000
+#define OUT_BUF_SIZE 40000
+#define IN_BUF_SIZE 2000
 #endif
 #if defined TARGET_NUCLEO_L053R8
 #define OUT_BUF_SIZE 256
@@ -27,3 +27,4 @@ extern volatile uint16_t    outDataPutPosition;
 void ProcessCommand ( void ) ;
 
 #endif
+
