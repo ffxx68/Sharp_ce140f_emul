@@ -48,7 +48,7 @@ About power, the Sharp and the Nucleo do not share the 5v power line, just gnd. 
 
 ## Alternative designs
 
-An impotant issue has arised, while testing the finished board on different Sharp PC models (which I didn't hit on my personal one), having to do with the level converter used in my design. The description and a complete story of its analysis can be found at: [Issue #4](https://github.com/ffxx68/Sharp_ce140f_emul/issues/4).
+An important issue has arised, while testing the finished board on different Sharp PC models (which I didn't hit, while using it on my own PC), having to do with the level converter used in my design. The description and a complete story of its analysis can be found at: [Issue #4](https://github.com/ffxx68/Sharp_ce140f_emul/issues/4).
 
 A relatively easy [workaround](https://github.com/ffxx68/Sharp_ce140f_emul/issues/4#issuecomment-1560580153) was later found, using stronger Pull-up resistors, which seems to fix the problem in most of cases. Still, someone has designed and built alternative version of the board. Like, for example the one suggested by Yuuichi Akagawa:
 
@@ -60,13 +60,13 @@ Here, he used integrated level converters (SN74LV1T34), in place of the discrete
 
 Yet an alternative design was also proposed by Pokoyama Danna:
 
-[Pokoyama Danna's board](https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/Board_v1.5_PoyokomaDanna)
+[Pokoyama Danna's board](https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/Board_v1.5_PoyokomaDanna) (e-mail: [PoyokomaDanna](ac_sent@yahoo.co.jp))
 
 ![image](https://github.com/ffxx68/Sharp_ce140f_emul/assets/659557/f0aaea48-6eab-4ee4-bb78-c86369f2b7e5)
 
 where a programmable device (Renesas SLG46826) was used instead. 
 
-Please refer to the owners of these designs for additional info (e.g. [Yuuichi](https://github.com/YuuichiAkagawa), or [PoyokomaDanna](ac_sent@yahoo.co.jp)).
+Yet, another interesting interface is that by Wayne Venables [Sharp Manager](https://github.com/codaris/SharpManager), where not only the CE-140F, but also the CE-126P cassette and printer interface is emulated, on Arduino plus a Windows counterpart program.
 
 ## Emulation software description
 This emulator tries to respond as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC, like an actual CE-140F would do. Unfortunately, the official CE140-F Service Manual doesn't go beyond the low-level hardware description, so I tried summarizing in another document what we've found so far about the communication protocol:
