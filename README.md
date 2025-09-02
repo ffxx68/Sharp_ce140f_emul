@@ -69,31 +69,35 @@ where a programmable device (Renesas SLG46826) was used instead.
 Yet, another interesting interface is that by Wayne Venables [Sharp Manager](https://github.com/codaris/SharpManager), where not only the CE-140F, but also the CE-126P cassette and printer interface is emulated, on Arduino plus a Windows counterpart program.
 
 ## Emulation software description
-This emulator tries to respond as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC, like an actual CE-140F would do. Unfortunately, the official CE140-F Service Manual doesn't go beyond the low-level hardware description, so I tried summarizing in another document what we've found so far about the communication protocol:
+
+This emulator tries to reply as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC, like an actual CE-140F would. Unfortunately, the official CE-140F Service Manual doesn't go beyond the low-level hardware description, so some commands are still unimpleneted and also the implemented ones might face unexected behaviour. Several tests, by different users too, have validated the most common use cases, though. 
+
+With respect to the command exchange protocol, I've tried to summarize here what we know so far:
 
 [Protocol](https://github.com/ffxx68/Sharp_ce140f_emul/blob/main/protocol.md)
 
-Being this a work in progress, I recommend using the source code as the ultimate reference, anyway.
+Being this a work in progress, I recommend using the latest source code as the actual reference, anyway.
 
 ## Software build notes
 
-The compiled firmware binaries are shared [here](https://github.com/ffxx68/Sharp_ce140f_emul/releases) as well, ready for begin uploaded onto the board. As with any Nucleo board, the fw upload procedure is to plug your board to the USB and just upload (drag&drop) the .bin file on the device, which has appeared as a (virtual) disk. This is for Windows... not sure how to do it in Linux, sorry.
+The compiled firmware binaries are shared [here](https://github.com/ffxx68/Sharp_ce140f_emul/releases) as well, ready for uploading onto the board. As with any Nucleo board, the fw upload procedure is to plug your board to the USB and just upload (drag&drop) the .bin file on the device, which has appeared as a (virtual) disk. This is for Windows... not sure how to do it in Linux, sorry.
 
 If one wishes to build his firmware from code, this is possible using the standard methods offered by the online [MBed Keil Studio IDE](https://studio.keil.arm.com) - importing this complete GitHub repository in a new project and selecting the NUCLEO-L432KC as the target board for it. Then, build. Please refer to MBed Keil Studio documentation, for further details about how to proceed. Let me also share a brief video, about how to do it in practice: [how to clone and build the Sharp_ce140f_emul project, in Keil Studio Cloud](https://youtu.be/FL6c4iH5npw).
 
 The MBed library included now with this repository is the (formally unsupported) version 2. This choice was initially imposed by the early prototype on the L053R8, for the smaller footprint, compared to latest -OS version 6 (even with a "bare metal" build profile). The Mbed-v6 build simply didn't fit in the L053R8. Then, work shifted to hardware, while software stayed on v2. An upgrade to v6 with the larger L432KC memory is possible, sooner or later...
 
-The SD File System library is also a small revision of [this one](https://os.mbed.com/cookbook/SD-Card-File-System) (the original code didn't work out of the box, to me). Moving to v6 and standard SD libs might solve these issues, but for the timebeing I'm using a local copy. Also, it didn't compile on the latest revision of the MBed library, so I had to rollback MBed (while still on v2) to revision #137. In any case, all of the above is already included in present repo, which compiles as is - no intervention needed.
+The SD File System library is also a small revision of [this one](https://os.mbed.com/cookbook/SD-Card-File-System) (the original code didn't work out of the box, to me). Moving to v6 and standard SD libs might solve these issues, but for the timebeing I'm using a local copy. Also, it didn't compile on the latest revision of the MBed library, so I had to rollback MBed (while still on v2) to revision #137. 
 
-*NOTE* - The Keil Sudio Cloud online tools I have used to compile this project [will reach end of life in July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644).  I have no plan at presento to migrate to up-to-date tools (as suggested there). If anyone is willing to do so... he/she is welcome!
+In any case, all of the above is already included in present repo version, which should compiles as is - no intervention needed.
 
-The emulation software in itself is still under development, as each command from the Sharp (DSKF, FILES, SAVE, LOAD, etc.) needs data retrieved from the SD to be properly formatted back to be accepted by the Sharp. This is a rather lengthy process, involving a big deal of reverse engineering. So, stay tuned for updates...
+*NOTE* - The Keil Sudio Cloud online tools, initially used to compile this project, [will reach end of life in July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). I have no plan at present to migrate to more up-to-date tools (as suggested there), so, if anyone is willing to do so... he/she is welcome!
 
-## Evolutions
-As noted, version v1 of the board needs to be powered through an USB cable. Making the emulator entirely portable, battery powered, is the most sensible next step that gets to my mind. To this aim, I have started a second revision of the board design, aimed mainly at:
+## Further Evolutions
+
+As noted, version v1 of the board needs to be powered through the board USB plug. Making the emulator entirely portable, battery powered, is the most sensible next step that gets to my mind. To this aim, I have started a second revision of the board design, aimed mainly at:
 
 - USB-rechargable battery power
-- an enclosure-ready form factor
+- enclosure-ready form factor
 - fixing Issue#4 (see above)
 
 A DRAFT verions of this v2 PCB is here: 
@@ -103,14 +107,14 @@ https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/KiCad_v2
 but it's very far from the making, yet. Firmware would need to be revised too.
 
 ## Acknowledgements
-Many have have contributed with support and suggestions to this project. 
+Many have have contributed, with support and suggestions, to make this project what it is.
 
-First of all let me mention Remy, author of the  [Pockemul](https://pockemul.com/) emulator, who originally reverse engineered the CE-140F protocol.
+First of all let me mention Remy, author of the [Pockemul](https://pockemul.com/) emulator, who originally reverse engineered the CE-140F protocol.
 
 Then [Walter](http://www.cavefischer.at/spc/index.htm), who helped on the hardware interface front.
 
 Then, the entire community of Sharp-PC enthusiasts.
 
-Then, the contributors to the PCB-crowdfunding campaign.
+Then, the contributors to the v1 PCB-crowdfunding campaign, on Indiegogo.
 
 Thank you all.
