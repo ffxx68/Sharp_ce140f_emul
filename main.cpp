@@ -610,6 +610,32 @@ void startDeviceCodeSeq ( void ) {
     }
 }
 
+char sio_buf [80];
+int sio_pos = 0;
+
+// Here we could handle commands issued through the serial console
+void sio_callback() {
+    // Note: you need to actually read from the serial to clear the RX interrupt
+    char c = pc.getc();
+    
+    // store char in buffer and process command on 'Enter'
+    if ( sio_pos < 80 ) {
+        pc.putc(c);
+        sio_buf[sio_pos] = c;
+        sio_pos++;
+        if ( c == 0x0D) {
+            infoLed = !infoLed;
+            wait_ms(20);
+            infoLed = !infoLed;
+            
+            // parse and process command in buffer
+            // ... TO DO ...
+
+            sio_pos = 0;
+        }
+    }
+}
+
 int main(void) {
   uint8_t i = 20;
 
@@ -649,7 +675,16 @@ int main(void) {
   mainTimer.reset();
   mainTimer.start();
 
+
+
+  // in the callback we handle commands issued through the serial console
+  pc.attach(&sio_callback);
+
   while (1) {
-    wait(1); // logic handled with interrupts and timers
+     
+    // Sharp CE140F emulator logic is handled by interrupts and timers
+    
+    wait(1);
+
   }
 }
