@@ -90,7 +90,8 @@ The SD File System library is also a small revision of [this one](https://os.mbe
 
 In any case, all of the above is already included in present repo version, which should compiles as is - no intervention needed.
 
-*NOTE* - The Keil Sudio Cloud online tools, initially used to compile this project, [will reach end of life in July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). I have no plan at present to migrate to more up-to-date tools (as suggested there), so, if anyone is willing to do so... he/she is welcome!
+*NOTE* - The Keil Sudio Cloud online tools, initially used to compile this project, [has reached end of life on July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). I have started porting the code to the STM32CubeIDE framework, on the new 'v1.1_CubeIDE' branch.
+If anyone is willing to contribute further... she/he is welcome!
 
 ## Further Evolutions
 
