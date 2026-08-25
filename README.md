@@ -80,17 +80,8 @@ Being this a work in progress, I recommend using the latest source code as the a
 
 ## Software build notes
 
-The compiled firmware binaries are shared [here](https://github.com/ffxx68/Sharp_ce140f_emul/releases) as well, ready for uploading onto the board. As with any Nucleo board, the fw upload procedure is to plug your board to the USB and just upload (drag&drop) the .bin file on the device, which has appeared as a (virtual) disk. This is for Windows... not sure how to do it in Linux, sorry.
-
-If one wishes to build his firmware from code, this is possible using the standard methods offered by the online [MBed Keil Studio IDE](https://studio.keil.arm.com) - importing this complete GitHub repository in a new project and selecting the NUCLEO-L432KC as the target board for it. Then, build. Please refer to MBed Keil Studio documentation, for further details about how to proceed. Let me also share a brief video, about how to do it in practice: [how to clone and build the Sharp_ce140f_emul project, in Keil Studio Cloud](https://youtu.be/FL6c4iH5npw).
-
-The MBed library included now with this repository is the (formally unsupported) version 2. This choice was initially imposed by the early prototype on the L053R8, for the smaller footprint, compared to latest -OS version 6 (even with a "bare metal" build profile). The Mbed-v6 build simply didn't fit in the L053R8. Then, work shifted to hardware, while software stayed on v2. An upgrade to v6 with the larger L432KC memory is possible, sooner or later...
-
-The SD File System library is also a small revision of [this one](https://os.mbed.com/cookbook/SD-Card-File-System) (the original code didn't work out of the box, to me). Moving to v6 and standard SD libs might solve these issues, but for the timebeing I'm using a local copy. Also, it didn't compile on the latest revision of the MBed library, so I had to rollback MBed (while still on v2) to revision #137. 
-
-In any case, all of the above is already included in present repo version, which should compiles as is - no intervention needed.
-
-*NOTE* - The Keil Sudio Cloud online tools, initially used to compile this project, [will reach end of life in July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). I have no plan at present to migrate to more up-to-date tools (as suggested there), so, if anyone is willing to do so... he/she is welcome!
+* NOTE - The original version of the project (in 'main' branch) was developed and tested using the Keil Sudio Cloud online tools, which now has reached its [end of life, in July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). What is found under the 'v1.1_CubeIDE' branch is the initial porting to the STM32CubeIDE framework.
+This version hasn't been tested yet! *
 
 ## Further Evolutions
 
