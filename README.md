@@ -80,8 +80,8 @@ Being this a work in progress, I recommend using the latest source code as the a
 
 ## Software build notes
 
-* NOTE - The original version of the project (in 'main' branch) was developed and tested using the Keil Sudio Cloud online tools, which now has reached its [end of life, in July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). What is found under the 'v1.1_CubeIDE' branch is the initial porting to the STM32CubeIDE framework.
-This version hasn't been tested yet! *
+*NOTE* - The original version of the project (the one in 'main' branch) was developed using the Keil Sudio Cloud online tools, which has now reached its [end of life, since July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). What is found under the 'v1.1_CubeIDE' branch is the initial porting to the STM32CubeIDE framework.
+This version hasn't been tested yet!
 
 ## Further Evolutions
 
