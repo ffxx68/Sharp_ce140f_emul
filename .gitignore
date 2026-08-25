@@ -1,0 +1,11 @@
+compile_commands?json
+BUILD
+?mbed
+?clangd
+?cache
+mbed
+SDFileSystem
+.mbed
+compile_commands.json
+.clangd
+.cache
