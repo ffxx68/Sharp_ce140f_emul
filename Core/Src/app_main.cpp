@@ -9,7 +9,7 @@
 #include <stdarg.h>
 
 #define DEBUG 1
-#define DEBUG_SIZE 1024
+#define DEBUG_SIZE 2048
 #define DEBUG_TIMEOUT 3000
 
 #define NIBBLE_DELAY_1 1000
@@ -39,6 +39,10 @@ volatile uint16_t debuglock = 0;
 
 extern volatile bool     cmdComplete;
 extern volatile uint8_t  skipDeviceCode;
+
+// Volatile function pointers to replicate MBed's dynamic interrupt attach/detach
+void (*irq_BUSY_rise)(void) = NULL;
+void (*irq_BUSY_fall)(void) = NULL;
 
 // Virtual software timers running via main loop or callback tracking
 uint32_t ackOffTimestamp = 0;
@@ -89,6 +93,13 @@ volatile uint8_t debugBuf[DEBUG_SIZE];
 void debug_log(const char *fmt, ...) {
     uint8_t debugLine[120];
     va_list va;
+    
+    // Check if buffer has space (leave room for new entry)
+    size_t currentLen = strlen((char*)debugBuf);
+    if (currentLen > DEBUG_SIZE - 150) {
+        return; // Buffer full, skip logging
+    }
+    
     debuglock = 1;
     va_start(va, fmt);
     sprintf((char*)debugLine, "%lu ", read_us());
@@ -102,6 +113,13 @@ void debug_log(const char *fmt, ...) {
 void debug_hex(volatile uint8_t *buf, volatile uint16_t len) {
     int j;
     char tmp[15];
+    
+    // Check if buffer has space
+    size_t currentLen = strlen((char*)debugBuf);
+    if (currentLen > DEBUG_SIZE - ((size_t)len * 3 + 30)) {
+        return; // Buffer full, skip logging
+    }
+    
     debuglock = 1;
     sprintf(tmp, "%lu <", read_us());
     strcat((char*)debugBuf, tmp);
@@ -152,12 +170,28 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     }
     else if (GPIO_Pin == in_BUSY_Pin) {
         if (HAL_GPIO_ReadPin(in_BUSY_GPIO_Port, in_BUSY_Pin) == GPIO_PIN_SET) {
-            bitReady();
-            inNibbleReady();
+            if (irq_BUSY_rise != NULL) {
+                irq_BUSY_rise();
+            }
         } else {
-            inNibbleAck();
+            if (irq_BUSY_fall != NULL) {
+                irq_BUSY_fall();
+            }
         }
     }
+}
+
+// Counter for BUSY transitions during send (for debug)
+volatile uint16_t busyRiseCount = 0;
+volatile uint16_t busyFallCount = 0;
+
+// Debug handlers for BUSY during send - minimal to avoid timing issues
+void debugBUSY_rise(void) {
+    busyRiseCount++;
+}
+
+void debugBUSY_fall(void) {
+    busyFallCount++;
 }
 
 void SendOutputData(void) {
@@ -165,15 +199,60 @@ void SendOutputData(void) {
     uint32_t nTimeout;
     uint32_t startTime = read_us();
 
+    // Reset BUSY counters
+    busyRiseCount = 0;
+    busyFallCount = 0;
+
+    // Attach minimal BUSY triggers during send
+    irq_BUSY_rise = &debugBUSY_rise;
+    irq_BUSY_fall = &debugBUSY_fall;
+
+    // Set input data pins to high impedance (no pull) during output
+    // This prevents pull resistors from interfering with the level converter
+    // (matches MBed's in_xxx.mode(PullNone) behavior)
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    
+    // in_SEL_1 = PB1, in_SEL_2 = PB6 (on GPIOB)
+    GPIO_InitStruct.Pin = in_SEL_1_Pin | in_SEL_2_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    
+    // in_D_OUT = PA10, in_D_IN = PA1 (on GPIOA)
+    GPIO_InitStruct.Pin = in_D_OUT_Pin | in_D_IN_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    // Ensure ACK is low before starting
+    ResetACK();
+
+    // Wait for BUSY to be LOW before starting (PC should have lowered it)
+    nTimeout = 10000;
+    while (HAL_GPIO_ReadPin(in_BUSY_GPIO_Port, in_BUSY_Pin) != GPIO_PIN_RESET) {
+        if (nTimeout-- == 0) {
+            debug_log("SendOut: BUSY not low at start!\n");
+            return;
+        }
+        wait_us(100);
+    }
+
     while (outDataGetPosition < outDataPutPosition) {
         wait_us(OUT_NIBBLE_DELAY);
 
+        // Wait for BUSY to go DOWN (use direct register read for speed)
+        bool timedout1 = false;
         nTimeout = 50000;
-        while ((HAL_GPIO_ReadPin(in_BUSY_GPIO_Port, in_BUSY_Pin) != GPIO_PIN_RESET) && (nTimeout-- > 0)) {
+        while ((in_BUSY_GPIO_Port->IDR & in_BUSY_Pin) != 0) {
+            if (nTimeout-- == 0) {
+                timedout1 = true;
+                break;
+            }
             wait_us(100);
         }
-        if (nTimeout == 0) {
+        if (timedout1) {
             ERR_PRINTOUT("Send error 1\n");
+            debug_log("SO Err1 pos: %u\n", outDataGetPosition);
             ResetACK();
             break;
         }
@@ -188,28 +267,65 @@ void SendOutputData(void) {
             t = (dataOutByte & 0x0F);
         }
 
+        // Set data on output lines
         HAL_GPIO_WritePin(out_SEL_1_GPIO_Port, out_SEL_1_Pin, (t & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET);
         HAL_GPIO_WritePin(out_SEL_2_GPIO_Port, out_SEL_2_Pin, (t & 0x02) ? GPIO_PIN_SET : GPIO_PIN_RESET);
         HAL_GPIO_WritePin(out_D_OUT_GPIO_Port, out_D_OUT_Pin, (t & 0x04) ? GPIO_PIN_SET : GPIO_PIN_RESET);
         HAL_GPIO_WritePin(out_D_IN_GPIO_Port, out_D_IN_Pin, (t & 0x08) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
+        // Nibble is ready for Sharp-PC to get it
         wait_us(OUT_NIBBLE_DELAY);
+        
         SetACK();
 
-        nTimeout = 50000;
-        while ((HAL_GPIO_ReadPin(in_BUSY_GPIO_Port, in_BUSY_Pin) == GPIO_PIN_RESET) && (nTimeout-- > 0)) {
-            wait_us(100);
+        // Wait for BUSY to go UP (tight polling without delay for faster detection)
+        bool timedout2 = false;
+        uint32_t startWait = read_us();
+        while ((in_BUSY_GPIO_Port->IDR & in_BUSY_Pin) == 0) {
+            if ((read_us() - startWait) > 5000000) { // 5 second timeout
+                timedout2 = true;
+                break;
+            }
         }
-        if (nTimeout == 0) {
+        if (timedout2) {
             ERR_PRINTOUT("Send error 2\n");
+            debug_log("SO Err2 pos: %u, nib: %X\n", outDataGetPosition, t);
             ResetACK();
             break;
         }
+        // Nibble successfully acknowledged
         ResetACK();
     }
+
+    // Reset output data lines to 0 (match MBed cleanup)
+    HAL_GPIO_WritePin(out_D_OUT_GPIO_Port, out_D_OUT_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(out_D_IN_GPIO_Port, out_D_IN_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(out_SEL_2_GPIO_Port, out_SEL_2_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(out_SEL_1_GPIO_Port, out_SEL_1_Pin, GPIO_PIN_RESET);
+
+    // Restore input data pins to pull-down mode
+    // (matches MBed's in_xxx.mode(PullDown) behavior)
+    GPIO_InitStruct = {0};
+    
+    // in_SEL_1 = PB1, in_SEL_2 = PB6 (on GPIOB)
+    GPIO_InitStruct.Pin = in_SEL_1_Pin | in_SEL_2_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    
+    // in_D_OUT = PA10, in_D_IN = PA1 (on GPIOA)
+    GPIO_InitStruct.Pin = in_D_OUT_Pin | in_D_IN_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    // Detach debug BUSY handlers
+    irq_BUSY_rise = NULL;
+    irq_BUSY_fall = NULL;
+
     uint8_t nl = '\n';
     HAL_UART_Transmit(&huart2, &nl, 1, HAL_MAX_DELAY);
-    debug_log("send complete\n");
+    debug_log("send complete, BUSY rise:%u fall:%u\n", busyRiseCount, busyFallCount);
     debug_log("avg output timing (ms/byte): %.2f\n", (read_us() - startTime) / outDataGetPosition / 1000.0);
 }
 
@@ -258,6 +374,10 @@ void inDataReady(void) {
     HAL_UART_Transmit(&huart2, &visualChar, 1, HAL_MAX_DELAY);
     debug_log("Processing...\n");
 
+    // Detach BUSY triggers during data processing
+    irq_BUSY_rise = NULL;
+    irq_BUSY_fall = NULL;
+
     if (inBufPosition > 0) {
         debug_log("in: %d bytes (first 40 below)\n", inBufPosition);
         debug_hex(inDataBuf, (inBufPosition < 40) ? inBufPosition : 40);
@@ -291,6 +411,10 @@ void inDataReady(void) {
                     highNibbleIn = false;
                     checksum = 0;
                     wait_us(NIBBLE_DELAY_2);
+
+                    // Re-attach triggers for skipping device code handshake
+                    irq_BUSY_fall = &inNibbleAck;
+                    irq_BUSY_rise = &inNibbleReady;
                 }
             } else {
                 ERR_PRINTOUT("Command processing error\n");
@@ -315,6 +439,9 @@ void bitReady(void) {
         bitCount++;
 
         if (bitCount == 8) {
+            // Detach BUSY rising edge trigger
+            irq_BUSY_rise = NULL;
+
             // FIXED: Instantiated a dedicated character array buffer for safe string compilation
             char outStr[32];
             sprintf(outStr, "d 0x%02X\n", deviceCode);
@@ -327,6 +454,10 @@ void bitReady(void) {
                 highNibbleIn = false;
                 checksum = 0;
                 skipDeviceCode = 0;
+
+                // Re-register Busy edge callbacks for direct Nibble Handshaking
+                irq_BUSY_fall = &inNibbleAck;
+                irq_BUSY_rise = &inNibbleReady;
 
                 nTimeout = 10000;
                 while ((HAL_GPIO_ReadPin(in_X_OUT_GPIO_Port, in_X_OUT_Pin) == GPIO_PIN_SET ||
@@ -363,6 +494,11 @@ void startDeviceCodeSeq(void) {
         inBufPosition = 0;
         debug_log("Device\n");
         wait_us(ACK_DELAY);
+
+        // Bind rise trigger to bitReady and detach fall trigger 
+        irq_BUSY_rise = &bitReady;
+        irq_BUSY_fall = NULL;
+
         wait_us(ACK_DELAY);
     }
 }
