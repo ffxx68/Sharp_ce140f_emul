@@ -1,0 +1,5 @@
+../Drivers/BSP/STM32L4xx_Nucleo_32/stm32l4xx_nucleo_32.c:97:10:BSP_GetVersion	1
+../Drivers/BSP/STM32L4xx_Nucleo_32/stm32l4xx_nucleo_32.c:109:6:BSP_LED_Init	1
+../Drivers/BSP/STM32L4xx_Nucleo_32/stm32l4xx_nucleo_32.c:133:6:BSP_LED_On	1
+../Drivers/BSP/STM32L4xx_Nucleo_32/stm32l4xx_nucleo_32.c:145:6:BSP_LED_Off	1
+../Drivers/BSP/STM32L4xx_Nucleo_32/stm32l4xx_nucleo_32.c:157:6:BSP_LED_Toggle	1

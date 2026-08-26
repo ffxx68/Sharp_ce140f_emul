@@ -1,0 +1,20 @@
+../Core/Src/app_main.cpp:58:6:void DWT_Init()	4	static
+../Core/Src/app_main.cpp:63:6:void wait_us(uint32_t)	24	static
+../Core/Src/app_main.cpp:69:10:uint32_t read_us()	4	static
+../Core/Src/app_main.cpp:73:6:void ResetACK()	8	static
+../Core/Src/app_main.cpp:79:6:void SetACK()	8	static
+../Core/Src/app_main.cpp:89:6:)	136	static
+../Core/Src/app_main.cpp:102:6:void debug_hex(volatile uint8_t*, uint16_t)	40	static
+../Core/Src/app_main.cpp:117:6:void outDebugDump()	8	static
+../Core/Src/app_main.cpp:127:6:void outDebugDumpManual()	16	static
+../Core/Src/app_main.cpp:144:6:void HAL_GPIO_EXTI_Callback(uint16_t)	16	static
+../Core/Src/app_main.cpp:163:6:void SendOutputData()	24	static
+../Core/Src/app_main.cpp:216:6:void inNibbleReady()	24	static
+../Core/Src/app_main.cpp:243:6:void inNibbleAck()	8	static
+../Core/Src/app_main.cpp:250:6:void SendErrorOut()	8	static
+../Core/Src/app_main.cpp:256:6:void inDataReady()	16	static
+../Core/Src/app_main.cpp:305:6:void bitReady()	48	static
+../Core/Src/app_main.cpp:351:6:void startDeviceCodeSeq()	16	static
+../Core/Src/app_main.cpp:374:6:void check_serial_input()	8	static
+../Core/Src/app_main.cpp:392:6:void run_software_timers()	16	static
+../Core/Src/app_main.cpp:413:6:void app_main()	48	static
