@@ -1,11 +1,18 @@
-compile_commands?json
-BUILD
-?mbed
-?clangd
-?cache
-mbed
-SDFileSystem
-.mbed
-compile_commands.json
-.clangd
-.cache
+# STM32CubeIDE build output
+Debug/
+Release/
+
+# File di progetto locali
+.settings/
+.metadata/
+
+# File generati dal build
+*.o
+*.d
+*.su
+*.cyclo
+*.list
+*.map
+*.bin
+*.elf
+build.log
