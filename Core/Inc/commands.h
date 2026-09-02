@@ -3,8 +3,8 @@
 
 #include "main.h"
 
-#define OUT_BUF_SIZE 38000
-#define IN_BUF_SIZE 2000
+#define OUT_BUF_SIZE 8192
+#define IN_BUF_SIZE 1024
 #define MAX_N_FILES 6
 
 #define ERR_PRINTOUT(x) debug_log("ERR %s", x); print_to_pc(x)

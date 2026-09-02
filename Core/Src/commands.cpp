@@ -4,8 +4,8 @@
 #include <string.h>
 #include <cstdint>
 
-extern void debug_log(const char *fmt, ...);
-extern void debug_hex(volatile uint8_t *buf, volatile uint16_t len);
+extern "C" void debug_log(const char *fmt, ...);
+extern "C" void debug_hex(volatile uint8_t *buf, volatile uint16_t len);
 extern UART_HandleTypeDef huart2;
 extern volatile uint16_t outDataGetPosition;
 
@@ -98,7 +98,9 @@ void process_FILES(void) {
 	debug_log("FILES\n");
 	outDataAppend(CheckSum(0x00));
 
-	if (f_mount(&FatFs, "0:", 1) != FR_OK) {
+	FRESULT fres = f_mount(&FatFs, "0:", 1);
+	if (fres != FR_OK) {
+		debug_log("f_mount err %d\n", fres);
 		ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
 		outDataAppend(CheckSum(0x00));
 		outDataAppend(out_checksum);

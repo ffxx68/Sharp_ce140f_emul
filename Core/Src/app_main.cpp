@@ -10,7 +10,7 @@
 #include <stdarg.h>
 
 #define DEBUG 1
-#define DEBUG_SIZE 2048
+#define DEBUG_SIZE 1024
 #define DEBUG_TIMEOUT 3000
 
 #define NIBBLE_DELAY_1 1000
@@ -136,7 +136,7 @@ void SetACK(void) {
 #ifdef DEBUG
 volatile uint8_t debugBuf[DEBUG_SIZE];
 
-void debug_log(const char *fmt, ...) {
+extern "C" void debug_log(const char *fmt, ...) {
     uint8_t debugLine[120];
     va_list va;
     
@@ -157,7 +157,7 @@ void debug_log(const char *fmt, ...) {
     debuglock = 0;
 }
 
-void debug_hex(volatile uint8_t *buf, volatile uint16_t len) {
+extern "C" void debug_hex(volatile uint8_t *buf, volatile uint16_t len) {
     int j;
     char tmp[15];
     
@@ -179,7 +179,7 @@ void debug_hex(volatile uint8_t *buf, volatile uint16_t len) {
     debuglock = 0;
 }
 
-void outDebugDump(void) {
+extern "C" void outDebugDump(void) {
     while (debuglock != 0) wait_us(100);
     if (debugBuf[0] != 0x00) {
         debuglock = 1;

@@ -55,7 +55,9 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void debug_log(const char *fmt, ...);
+void debug_hex(volatile uint8_t *buf, volatile uint16_t len);
+void outDebugDump(void);
 /* USER CODE END EFP */
 
 /* USER CODE BEGIN Private defines -----------------------------------------------------------*/

@@ -3,6 +3,7 @@
 
 #include "pintest.h"
 #include "commands.h"
+#include "ff.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -225,6 +226,7 @@ static void printHelp(void) {
     tp_print("  wait <pin> <lvl> [ms]  wait for an input level, report us\r\n");
     tp_print("  mon [ms]         watch inputs, count edges (default 2000)\r\n");
     tp_print("  pull down|none   input data lines pull mode\r\n");
+    tp_print("  sd               test SD card mount, init and directory listing\r\n");
     tp_print("  low              drive every output low\r\n");
     tp_print("  help             this text\r\n");
     tp_print("  exit             leave test mode, resume protocol\r\n");
@@ -452,6 +454,34 @@ bool pintest_process_line(const char *line) {
             tp_print("input data lines: PullNone\r\n");
         } else {
             tp_print("usage: pull down|none\r\n");
+        }
+    }
+    else if (tp_strcasecmp(cmd, "sd") == 0 || tp_strcasecmp(cmd, "sdtest") == 0) {
+        tp_print("Testing SD card SPI initialization...\r\n");
+        extern volatile uint8_t debugBuf[];
+        debugBuf[0] = 0x00;
+        extern FATFS FatFs;
+        FRESULT fr = f_mount(&FatFs, "0:", 1);
+        tp_print("f_mount result: %d (0=FR_OK, 1=FR_DISK_ERR, 3=FR_NOT_READY)\r\n", (int)fr);
+        if (debugBuf[0] != 0x00) {
+            tp_print("SPI log:\r\n%s\r\n", (char*)debugBuf);
+            debugBuf[0] = 0x00;
+        }
+        if (fr == FR_OK) {
+            DIR dir;
+            FILINFO fno;
+            if (f_opendir(&dir, "0:/") == FR_OK) {
+                tp_print("Files on SD card (0:/):\r\n");
+                int count = 0;
+                while (f_readdir(&dir, &fno) == FR_OK && fno.fname[0] != 0) {
+                    tp_print("  %s (%lu bytes)\r\n", fno.fname, (unsigned long)fno.fsize);
+                    count++;
+                }
+                f_closedir(&dir);
+                tp_print("Total: %d file(s) found\r\n", count);
+            } else {
+                tp_print("f_opendir failed!\r\n");
+            }
         }
     }
     else if (tp_strcasecmp(cmd, "low") == 0 || tp_strcasecmp(cmd, "all0") == 0) {
