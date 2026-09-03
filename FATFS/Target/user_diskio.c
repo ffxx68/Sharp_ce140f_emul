@@ -51,89 +51,84 @@ extern void debug_log(const char *fmt, ...);
 /* Private variables ---------------------------------------------------------*/
 static volatile DSTATUS Stat = STA_NOINIT;
 static uint8_t CardType = 0;
+SPI_HandleTypeDef hspi1;
+
+/* SPI MSP Callbacks */
+void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    if (hspi->Instance == SPI1) {
+        __HAL_RCC_GPIOA_CLK_ENABLE();
+        __HAL_RCC_GPIOB_CLK_ENABLE();
+        __HAL_RCC_SPI1_CLK_ENABLE();
+
+        // PB5 -> CS (GPIO Output, Push-Pull, High Speed, Initial High)
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+        GPIO_InitStruct.Pin = GPIO_PIN_5;
+        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+        // PA5 -> SCK, PA7 -> MOSI (AF5 SPI1, Push-Pull, High Speed)
+        GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_7;
+        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+        // PA6 -> MISO (AF5 SPI1, with Pull-Up)
+        GPIO_InitStruct.Pin = GPIO_PIN_6;
+        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Pull = GPIO_PULLUP;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    }
+}
+
+void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
+{
+    if (hspi->Instance == SPI1) {
+        __HAL_RCC_SPI1_CLK_DISABLE();
+        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7);
+    }
+}
 
 /* SPI helper functions */
 static void SD_SPI_Init(void)
 {
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_SPI1_CLK_ENABLE();
-    __HAL_RCC_SPI1_FORCE_RESET();
-    __HAL_RCC_SPI1_RELEASE_RESET();
+    hspi1.Instance = SPI1;
+    hspi1.Init.Mode = SPI_MODE_MASTER;
+    hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+    hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+    hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+    hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+    hspi1.Init.NSS = SPI_NSS_SOFT;
+    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256; // <= 400 kHz (~312.5 kHz @ 80MHz)
+    hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+    hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+    hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    hspi1.Init.CRCPolynomial = 7;
+    hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+    hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
 
-    // PB5 -> CS (GPIO Output, Push-Pull, High Speed)
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = GPIO_PIN_5;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    // PA5 -> SCK, PA7 -> MOSI (AF5 SPI1, Push-Pull, High Speed)
-    GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_7;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    // PA6 -> MISO (AF5 SPI1, with Pull-Up)
-    GPIO_InitStruct.Pin = GPIO_PIN_6;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    // Configure SPI1
-    SPI1->CR1 = 0;
-    // CR2: Data size = 8 bit (DS = 0111), FRXTH = 1 (RXNE on 8 bit)
-    SPI1->CR2 = (7 << SPI_CR2_DS_Pos) | SPI_CR2_FRXTH;
-    // CR1: Master mode, Baudrate Prescaler = 256 (~312.5 kHz @ 80MHz), SSM = 1, SSI = 1
-    SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (7 << SPI_CR1_BR_Pos);
-    // Enable SPI1
-    SPI1->CR1 |= SPI_CR1_SPE;
-
-    // Drain any leftover data in RX FIFO
-    while (SPI1->SR & SPI_SR_RXNE) {
-        (void)*(__IO uint8_t *)&SPI1->DR;
-    }
+    HAL_SPI_Init(&hspi1);
 }
 
 static void SD_SPI_SetSpeed(uint8_t fast)
 {
-    SPI1->CR1 &= ~SPI_CR1_SPE;
-    SPI1->CR1 &= ~SPI_CR1_BR_Msk;
-    if (fast) {
-        // Fast: APB2 / 8 = 10 MHz
-        SPI1->CR1 |= (2 << SPI_CR1_BR_Pos);
-    } else {
-        // Slow: APB2 / 256 = 312.5 kHz
-        SPI1->CR1 |= (7 << SPI_CR1_BR_Pos);
-    }
-    SPI1->CR1 |= SPI_CR1_SPE;
+    HAL_SPI_DeInit(&hspi1);
+    hspi1.Init.BaudRatePrescaler = fast ? SPI_BAUDRATEPRESCALER_8 : SPI_BAUDRATEPRESCALER_256;
+    HAL_SPI_Init(&hspi1);
 }
 
 static inline uint8_t SD_SPI_ReadWriteByte(uint8_t data)
 {
-    if (SPI1->SR & SPI_SR_OVR) {
-        (void)*(__IO uint8_t *)&SPI1->DR;
-        (void)SPI1->SR;
-    }
-    while (SPI1->SR & SPI_SR_RXNE) {
-        (void)*(__IO uint8_t *)&SPI1->DR;
-    }
-
-    uint32_t to = 20000;
-    while (!(SPI1->SR & SPI_SR_TXE) && --to);
-
-    *(__IO uint8_t *)&SPI1->DR = data;
-
-    to = 20000;
-    while (!(SPI1->SR & SPI_SR_RXNE) && --to);
-
-    return *(__IO uint8_t *)&SPI1->DR;
+    uint8_t rx = 0xFF;
+    HAL_SPI_TransmitReceive(&hspi1, &data, &rx, 1, 1000);
+    return rx;
 }
 
 static inline void SD_CS_LOW(void)
