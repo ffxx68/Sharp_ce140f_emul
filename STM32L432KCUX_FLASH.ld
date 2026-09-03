@@ -178,6 +178,15 @@ SECTIONS
     . = ALIGN(8);
   } >RAM
 
+  /* Section in SRAM2 (16 KB) */
+  .ram2 (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.ram2)
+    *(.ram2*)
+    . = ALIGN(4);
+  } >RAM2
+
   /* Remove information from the compiler libraries */
   /DISCARD/ :
   {

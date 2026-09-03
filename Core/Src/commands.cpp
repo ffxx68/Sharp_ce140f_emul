@@ -41,6 +41,21 @@ int file_pos = 0;
 // Target tracking macros
 uint8_t sdmiso = 1; // Handled directly via FatFs f_mount checks
 FATFS FatFs;
+bool isMounted = false;
+
+bool ensure_mounted(void) {
+	if (isMounted) {
+		return true;
+	}
+	FRESULT fres = f_mount(&FatFs, "0:", 1);
+	if (fres == FR_OK) {
+		isMounted = true;
+		debug_log("SD mount OK\n");
+		return true;
+	}
+	debug_log("f_mount err %d\n", fres);
+	return false;
+}
 
 void print_to_pc(const char *msg) {
 	HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
@@ -98,9 +113,7 @@ void process_FILES(void) {
 	debug_log("FILES\n");
 	outDataAppend(CheckSum(0x00));
 
-	FRESULT fres = f_mount(&FatFs, "0:", 1);
-	if (fres != FR_OK) {
-		debug_log("f_mount err %d\n", fres);
+	if (!ensure_mounted()) {
 		ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
 		outDataAppend(CheckSum(0x00));
 		outDataAppend(out_checksum);
@@ -135,18 +148,11 @@ void process_FILES_LIST(uint8_t cmd) {
 	int n_files = -1;
 	uint8_t tmp[15];
 
-	uint8_t tx = 'f';
-	HAL_UART_Transmit(&huart2, &tx, 1, HAL_MAX_DELAY);
-	tx = 0x30 + cmd;
-	HAL_UART_Transmit(&huart2, &tx, 1, HAL_MAX_DELAY);
-	tx = '\n';
-	HAL_UART_Transmit(&huart2, &tx, 1, HAL_MAX_DELAY);
-
 	debug_log("FILES_LIST 0x%02X\n", cmd);
 	outDataAppend(0x00);
 	out_checksum = 0;
 
-	if (f_mount(&FatFs, "0:", 1) != FR_OK) {
+	if (!ensure_mounted()) {
 		ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
 		outDataAppend(0xFF);
 		outDataAppend(out_checksum);
@@ -202,7 +208,7 @@ void process_LOAD(uint8_t cmd) {
 	uint8_t tmpFile[16];
 
 	out_checksum = 0;
-	if (f_mount(&FatFs, "0:", 1) != FR_OK) {
+	if (!ensure_mounted()) {
 		ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
 		outDataAppend(0x00);
 		sendString(" ");
@@ -215,8 +221,6 @@ void process_LOAD(uint8_t cmd) {
 
 	switch (cmd) {
 	case 0x0E: {
-		uint8_t tx = 'l';
-		HAL_UART_Transmit(&huart2, &tx, 1, HAL_MAX_DELAY);
 		strncpy((char*) tmpFile, (const char*) (inDataBuf + 3), 12);
 		tmpFile[12] = '\0';
 		trim(tmpFile);
@@ -245,8 +249,6 @@ void process_LOAD(uint8_t cmd) {
 		break;
 	}
 	case 0x17: {
-		uint8_t tx = '0';
-		HAL_UART_Transmit(&huart2, &tx, 1, HAL_MAX_DELAY);
 		if (f_read(&staticFile, &c, 1, &bytesRead) == FR_OK && bytesRead > 0) {
 			file_pos++;
 			outDataAppend(0x00);
@@ -264,26 +266,25 @@ void process_LOAD(uint8_t cmd) {
 		break;
 	}
 	case 0x12: {
-		uint8_t tx = 'a';
-		HAL_UART_Transmit(&huart2, &tx, 1, HAL_MAX_DELAY);
 		outDataAppend(0x00);
 		if (!staticFileOpen) {
+			debug_log("File not open\n");
 			outDataAppend(CheckSum(0x1A));
 			outDataAppend(out_checksum);
 			outDataAppend(0x00);
 			break;
 		}
+
 		do {
-			if (f_read(&staticFile, &c, 1, &bytesRead) != FR_OK
-					|| bytesRead == 0) {
+			if (f_read(&staticFile, &c, 1, &bytesRead) != FR_OK || bytesRead == 0) {
 				c = 0xFF; // Mirror EOF state
 			} else {
 				file_pos++;
 				outDataAppend(CheckSum(c));
 			}
-		} while ((bytesRead > 0) && (c != 0x0d));
+		} while ((bytesRead > 0) && (c != 0x0D));
 
-		if (c != 0x0d) {
+		if (c != 0x0D) {
 			debug_log("EOF\n");
 			outDataAppend(CheckSum(0x1A));
 			if (staticFileOpen) {
@@ -298,8 +299,6 @@ void process_LOAD(uint8_t cmd) {
 		break;
 	}
 	case 0x0f: {
-		uint8_t tx = '.';
-		HAL_UART_Transmit(&huart2, &tx, 1, HAL_MAX_DELAY);
 		outDataAppend(0x00);
 		uint16_t data_start = file_pos;
 		do {
@@ -334,7 +333,7 @@ void process_SAVE(int cmd) {
 	UINT bytesWritten;
 
 	out_checksum = 0;
-	if (f_mount(&FatFs, "0:", 1) != FR_OK) {
+	if (!ensure_mounted()) {
 		ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
 		outDataAppend(0xFF);
 		return;
@@ -342,8 +341,6 @@ void process_SAVE(int cmd) {
 
 	switch (cmd) {
 	case 0x10: {
-		uint8_t tx[2] = { 's', '0' };
-		HAL_UART_Transmit(&huart2, tx, 2, HAL_MAX_DELAY);
 		getFileName();
 		if (staticFileOpen) {
 			f_close(&staticFile);
@@ -361,8 +358,6 @@ void process_SAVE(int cmd) {
 		break;
 	}
 	case 0x11: {
-		uint8_t tx[2] = { 's', '1' };
-		HAL_UART_Transmit(&huart2, tx, 2, HAL_MAX_DELAY);
 		file_size = (int) inDataBuf[2] + (int) (inDataBuf[3] << 8)
 				+ (int) (inDataBuf[4] << 16);
 		debug_log("filesize: %d\n", file_size);
@@ -371,16 +366,12 @@ void process_SAVE(int cmd) {
 		break;
 	}
 	case 0x16: {
-		uint8_t tx[2] = { 's', '6' };
-		HAL_UART_Transmit(&huart2, tx, 2, HAL_MAX_DELAY);
 		outDataAppend(0x00);
 		file_pos = 0;
 		skipDeviceCode = 0xFE;
 		break;
 	}
 	case 0xFF: {
-		uint8_t tx = '.';
-		HAL_UART_Transmit(&huart2, &tx, 1, HAL_MAX_DELAY);
 		int buf_pos = 0;
 		skipDeviceCode = 0xFF;
 		while (buf_pos < inBufPosition - 1) {
@@ -400,8 +391,6 @@ void process_SAVE(int cmd) {
 		break;
 	}
 	case 0xFE: {
-		uint8_t tx = '.';
-		HAL_UART_Transmit(&huart2, &tx, 1, HAL_MAX_DELAY);
 		int buf_pos = 0;
 		if (inDataBuf[buf_pos] == 0x1A) {
 			debug_log("file done\n");
@@ -426,7 +415,9 @@ void process_DSKF(void) {
 	uint8_t dn = inDataBuf[1];
 	uint32_t diskspace = 65535;
 	debug_log("DSKF %d\n", dn);
-	if (dn != 2) {
+	if (!ensure_mounted()) {
+		ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
+	} else if (dn != 2) {
 		FATFS *fs;
 		DWORD fre_clust;
 		if (f_getfree("0:", &fre_clust, &fs) == FR_OK) {
@@ -467,6 +458,11 @@ void process_OPEN(void) {
 	uint8_t fn = inDataBuf[16] - 2;
 	getFileName();
 	debug_log("OPEN <%s> FOR '%d' AS #%d\n", FileName, mode, fn + 2);
+	if (!ensure_mounted()) {
+		ERR_PRINTOUT(ERR_SD_CARD_NOT_PRESENT);
+		outDataAppend(0xFF);
+		return;
+	}
 	if (open_files[fn].isOpen) {
 		f_close(&open_files[fn].fp);
 		open_files[fn].isOpen = false;
@@ -563,6 +559,10 @@ void process_INPUT(int cmd) {
 	}
 }
 void process_KILL(void) {
+	if (!ensure_mounted()) {
+		outDataAppend(0xFF);
+		return;
+	}
 	uint8_t tmpFile[13];
 	for (int i = 0; i < 12; i++) {
 		tmpFile[i] = inDataBuf[3 + i];

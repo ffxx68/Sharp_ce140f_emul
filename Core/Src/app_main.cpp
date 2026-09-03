@@ -10,7 +10,7 @@
 #include <stdarg.h>
 
 #define DEBUG 1
-#define DEBUG_SIZE 1024
+#define DEBUG_SIZE 12288
 #define DEBUG_TIMEOUT 3000
 
 #define NIBBLE_DELAY_1 1000
@@ -37,9 +37,11 @@ volatile uint8_t  dataOutByte;
 volatile uint16_t outDataGetPosition;
 volatile uint8_t  checksum;
 volatile uint16_t debuglock = 0;
+volatile uint32_t lastBusActivityTick = 0;
 
 extern volatile bool     cmdComplete;
 extern volatile uint8_t  skipDeviceCode;
+extern bool              staticFileOpen;
 
 // Volatile function pointers to replicate MBed's dynamic interrupt attach/detach
 void (*irq_BUSY_rise)(void) = NULL;
@@ -134,7 +136,7 @@ void SetACK(void) {
 }
 
 #ifdef DEBUG
-volatile uint8_t debugBuf[DEBUG_SIZE];
+__attribute__((section(".ram2"))) volatile uint8_t debugBuf[DEBUG_SIZE];
 
 extern "C" void debug_log(const char *fmt, ...) {
     uint8_t debugLine[120];
@@ -211,8 +213,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         #ifdef DEBUG
         outDebugDumpManual();
         #endif
+        return;
     }
-    else if (GPIO_Pin == in_X_OUT_Pin) {
+
+    lastBusActivityTick = HAL_GetTick();
+
+    if (GPIO_Pin == in_X_OUT_Pin) {
         startDeviceCodeSeq();
     }
     else if (GPIO_Pin == in_BUSY_Pin) {
@@ -395,8 +401,6 @@ void SendErrorOut(void) {
 }
 
 void inDataReady(void) {
-    uint8_t visualChar = 'c';
-    HAL_UART_Transmit(&huart2, &visualChar, 1, HAL_MAX_DELAY);
     debug_log("Processing...\n");
 
     // Detach BUSY triggers during data processing
@@ -424,13 +428,9 @@ void inDataReady(void) {
             if (outDataPutPosition > 0) {
                 debug_log("out: %u bytes (first 40 below)\n", outDataPutPosition);
                 debug_hex(outDataBuf, (outDataPutPosition < 40) ? outDataPutPosition : 40);
-                visualChar = 'o';
-                HAL_UART_Transmit(&huart2, &visualChar, 1, HAL_MAX_DELAY);
                 SendOutputData();
 
                 if (skipDeviceCode != 0x00) {
-                    visualChar = 'n';
-                    HAL_UART_Transmit(&huart2, &visualChar, 1, HAL_MAX_DELAY);
                     debug_log("next: 0x%02X\n", skipDeviceCode);
                     inBufPosition = 0;
                     highNibbleIn = false;
@@ -580,7 +580,12 @@ void run_software_timers(void) {
     }
 
     #ifdef DEBUG
-    if ((currentTick - debugDumpTimestamp) >= DEBUG_TIMEOUT) {
+    // Only dump debug log when the bus is completely idle (>150ms since last bus activity),
+    // ensuring the blocking UART dump never interrupts active line-by-line transfers (which gap at ~85ms).
+    bool busIsActive = inDataReadyActive || (inBufPosition > 0) ||
+                       ((currentTick - lastBusActivityTick) < 150);
+
+    if (!busIsActive && debugBuf[0] != 0x00) {
         debugDumpTimestamp = currentTick;
         outDebugDump();
     }
