@@ -64,7 +64,7 @@ From what we understood until now, a byte string is typically made of:
  
  N bytes: a variable-length command payload
  
- 1 byte: a checksum, summing (modulus 0xFF) over all the previous bytes
+ 1 byte: a checksum, an 8-bit accumulation (i.e. sum modulo 0x100)
  
 Hence, a checksum verification is performed first of all. If successful, the main command decode and processing function is invoked:
 
