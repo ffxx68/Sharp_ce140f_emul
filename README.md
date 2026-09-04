@@ -91,8 +91,10 @@ This applies to Windows OS. I can't tell exactly how to do it in Linux...
 
 ## Software build
 
-*NOTE* - The original version of the project (the one in 'main' branch) was developed using the Keil Sudio Cloud online tools, which has now reached its [end of life, since July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). What is found under the 'CubeIDE' branch contains the porting to the STM32CubeIDE framework.
-This version hasn't been tested yet on real hardware!
+*NOTE* - The original version of the project (the one in 'main' branch) was developed using the Keil Sudio Cloud online tools, 
+which has now reached its [end of life, since July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). 
+What is found under the 'CubeIDE' branch instead, contains the porting to the STM32CubeIDE framework.
+The release 'CubeIDE.1' has been built from this branch, and tested on DSKF, FILES, LOAD and SAVE commands only, so far.
 
 ## Further Evolutions
 
