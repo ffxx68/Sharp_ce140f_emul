@@ -28,6 +28,38 @@ The complete KiCAD project is public ([KiCad v1 project](https://github.com/ffxx
 [Sharp_ce140f_emul by AISLER](https://aisler.net/p/DIQRWUOC)
 [Sharp_ce140f_emul by PCBWay](https://www.pcbway.com/project/shareproject/Sharp_CE_140F_Emulator_0e4ce820.html)
 
+## Software installation
+
+The compiled firmware binaries are shared [here](https://github.com/ffxx68/Sharp_ce140f_emul/releases) as well, ready for uploading onto the board. As with any Nucleo board, the fw upload procedure is to plug your Nucleo board to the USB and just upload (drag&drop) the .bin file on the device, which has appeared as a (virtual) disk. This is for Windows... not sure how to do it in Linux, sorry.
+
+## Software build
+
+*NOTE* - The Keil Sudio Cloud online tools, initially used to compile this project, 
+[has reached end of life on July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). 
+
+While [Mbed Studio](https://github.com/ARMmbed/mbed-studio-workshop) is still available as an offline build tool, the underlying MBed OS isn't maintained anymore.
+
+Porting to the CubeMX/STM32CubeIDE framework is ongoing, on the new 'CubeIDE' branch.
+
+The MBed library included now with the repository in 'main' branch is the version 2, This one should be selected in the MBed Studio setup, 
+along with as NUCLEO-L432KC as the target.
+
+This MBed-v2 choice was initially imposed by the early prototype on the L053R8, for the smaller footprint, compared to latest -OS version 6 (even with a "bare metal" build profile). The Mbed-v6 build simply didn't fit in the L053R8. Then, work shifted to hardware, while software stayed on v2.
+
+The SD File System library is also a small revision of [this one](https://os.mbed.com/cookbook/SD-Card-File-System) (the original code didn't work out of the box, to me). Moving to v6 and standard SD libs might solve these issues, but for the timebeing I'm using a local copy. Also, it didn't compile on the latest revision of the MBed library, so I had to rollback MBed (while still on v2) to revision #137. 
+
+In any case, all of the above is already included in present repo version ('main' branch), which should compiles as is.
+
+## Emulation software description
+
+This emulator tries to reply as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC, like an actual CE-140F would. Unfortunately, the official CE-140F Service Manual doesn't go beyond the low-level hardware description, so some commands are still unimpleneted and also the implemented ones might face unexected behaviour. Several tests, by different users too, have validated the most common use cases, though. 
+
+With respect to the command exchange protocol, I've tried to summarize here what we know so far:
+
+[Protocol](https://github.com/ffxx68/Sharp_ce140f_emul/blob/main/protocol.md)
+
+Being this a work in progress, I recommend using the latest source code as the actual reference, anyway.
+
 ## Hardware interface notes
 
 Interface schematics (find the complete KiCad project in the repo):
@@ -67,31 +99,6 @@ Yet an alternative design was also proposed by Pokoyama Danna:
 where a programmable device (Renesas SLG46826) was used instead. 
 
 Yet, another interesting interface is that by Wayne Venables [Sharp Manager](https://github.com/codaris/SharpManager), where not only the CE-140F, but also the CE-126P cassette and printer interface is emulated, on Arduino plus a Windows counterpart program.
-
-## Emulation software description
-
-This emulator tries to reply as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC, like an actual CE-140F would. Unfortunately, the official CE-140F Service Manual doesn't go beyond the low-level hardware description, so some commands are still unimpleneted and also the implemented ones might face unexected behaviour. Several tests, by different users too, have validated the most common use cases, though. 
-
-With respect to the command exchange protocol, I've tried to summarize here what we know so far:
-
-[Protocol](https://github.com/ffxx68/Sharp_ce140f_emul/blob/main/protocol.md)
-
-Being this a work in progress, I recommend using the latest source code as the actual reference, anyway.
-
-## Software build notes
-
-The compiled firmware binaries are shared [here](https://github.com/ffxx68/Sharp_ce140f_emul/releases) as well, ready for uploading onto the board. As with any Nucleo board, the fw upload procedure is to plug your board to the USB and just upload (drag&drop) the .bin file on the device, which has appeared as a (virtual) disk. This is for Windows... not sure how to do it in Linux, sorry.
-
-If one wishes to build his firmware from code, this is possible using the standard methods offered by the online [MBed Keil Studio IDE](https://studio.keil.arm.com) - importing this complete GitHub repository in a new project and selecting the NUCLEO-L432KC as the target board for it. Then, build. Please refer to MBed Keil Studio documentation, for further details about how to proceed. Let me also share a brief video, about how to do it in practice: [how to clone and build the Sharp_ce140f_emul project, in Keil Studio Cloud](https://youtu.be/FL6c4iH5npw).
-
-The MBed library included now with this repository is the (formally unsupported) version 2. This choice was initially imposed by the early prototype on the L053R8, for the smaller footprint, compared to latest -OS version 6 (even with a "bare metal" build profile). The Mbed-v6 build simply didn't fit in the L053R8. Then, work shifted to hardware, while software stayed on v2. An upgrade to v6 with the larger L432KC memory is possible, sooner or later...
-
-The SD File System library is also a small revision of [this one](https://os.mbed.com/cookbook/SD-Card-File-System) (the original code didn't work out of the box, to me). Moving to v6 and standard SD libs might solve these issues, but for the timebeing I'm using a local copy. Also, it didn't compile on the latest revision of the MBed library, so I had to rollback MBed (while still on v2) to revision #137. 
-
-In any case, all of the above is already included in present repo version, which should compiles as is - no intervention needed.
-
-*NOTE* - The Keil Sudio Cloud online tools, initially used to compile this project, [has reached end of life on July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). I have started porting the code to the STM32CubeIDE framework, on the new 'v1.1_CubeIDE' branch.
-If anyone is willing to contribute further... she/he is welcome!
 
 ## Further Evolutions
 
