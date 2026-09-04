@@ -28,7 +28,7 @@ The complete KiCAD project is public ([KiCad v1 project](https://github.com/ffxx
 [Sharp_ce140f_emul by AISLER](https://aisler.net/p/DIQRWUOC)
 [Sharp_ce140f_emul by PCBWay](https://www.pcbway.com/project/shareproject/Sharp_CE_140F_Emulator_0e4ce820.html)
 
-## Hardware interface notes
+## Hardware interface
 
 Interface schematics (find the complete KiCad project in the repo):
 
@@ -46,7 +46,7 @@ About power, the Sharp and the Nucleo do not share the 5v power line, just gnd. 
 
 **Important Note** - With the Nucleo L432KC, by default the PA_5 (A4) and PA_6 (A5) pins can only be used as Input floating (ADC function). SB16 and SB18 solder bridges (0-ohm resistors, actually) must be removed, in order to use these pins as Digital output and have access to other functions (DigitalOut, SPI, PWM, etc...). Refer to the Nucleo user manual, for more details.
 
-## Alternative designs
+## Alternative haardware designs
 
 An important issue has arised, while testing the finished board on different Sharp PC models (which I didn't hit, while using it on my own PC), having to do with the level converter used in my design. The description and a complete story of its analysis can be found at: [Issue #4](https://github.com/ffxx68/Sharp_ce140f_emul/issues/4).
 
@@ -78,7 +78,18 @@ With respect to the command exchange protocol, I've tried to summarize here what
 
 Being this a work in progress, I recommend using the latest source code as the actual reference, anyway.
 
-## Software build notes
+## Software installation
+
+Pre-built binaores can be found on GitHub, at
+
+[Releases](https://github.com/ffxx68/Sharp_ce140f_emul/releases)
+
+at various stages in the software evloution, with version numbering suggesting the more recent one.
+
+To install a binary, dowload the .bin file on your PC and drag the file to the device shown as a virtual disk drive, when plugged in to a PC USB port.
+This applies to Windows OS. I can't tell exactly how to do it in Linux...
+
+## Software build
 
 *NOTE* - The original version of the project (the one in 'main' branch) was developed using the Keil Sudio Cloud online tools, which has now reached its [end of life, since July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). What is found under the 'CubeIDE' branch contains the porting to the STM32CubeIDE framework.
 This version hasn't been tested yet on real hardware!
