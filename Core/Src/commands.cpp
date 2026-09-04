@@ -220,7 +220,7 @@ void process_LOAD(uint8_t cmd) {
 	}
 
 	switch (cmd) {
-	case 0x0E: {
+	case 0x0E: { // open file and send file size
 		strncpy((char*) tmpFile, (const char*) (inDataBuf + 3), 12);
 		tmpFile[12] = '\0';
 		trim(tmpFile);
@@ -248,7 +248,7 @@ void process_LOAD(uint8_t cmd) {
 		outDataAppend(out_checksum);
 		break;
 	}
-	case 0x17: {
+	case 0x17: { // send header bytes
 		if (f_read(&staticFile, &c, 1, &bytesRead) == FR_OK && bytesRead > 0) {
 			file_pos++;
 			outDataAppend(0x00);
@@ -265,7 +265,7 @@ void process_LOAD(uint8_t cmd) {
 		}
 		break;
 	}
-	case 0x12: {
+	case 0x12: { // ASCII data chunk (one line max)
 		outDataAppend(0x00);
 		if (!staticFileOpen) {
 			debug_log("File not open\n");
@@ -298,7 +298,7 @@ void process_LOAD(uint8_t cmd) {
 		outDataAppend(0x00);
 		break;
 	}
-	case 0x0f: {
+	case 0x0f: { // non-ASCII data stream (single chunk)
 		outDataAppend(0x00);
 		uint16_t data_start = file_pos;
 		do {
@@ -340,7 +340,7 @@ void process_SAVE(int cmd) {
 	}
 
 	switch (cmd) {
-	case 0x10: {
+	case 0x10: { // file name : create (or replace)
 		getFileName();
 		if (staticFileOpen) {
 			f_close(&staticFile);
@@ -357,7 +357,7 @@ void process_SAVE(int cmd) {
 		outDataAppend(0x00);
 		break;
 	}
-	case 0x11: {
+	case 0x11: { // file size (non-ASCII)
 		file_size = (int) inDataBuf[2] + (int) (inDataBuf[3] << 8)
 				+ (int) (inDataBuf[4] << 16);
 		debug_log("filesize: %d\n", file_size);
@@ -365,13 +365,13 @@ void process_SAVE(int cmd) {
 		skipDeviceCode = 0xFF;
 		break;
 	}
-	case 0x16: {
+	case 0x16: { // ASCII data stream
 		outDataAppend(0x00);
 		file_pos = 0;
 		skipDeviceCode = 0xFE;
 		break;
 	}
-	case 0xFF: {
+	case 0xFF: { // save file data block (non-ASCII)
 		int buf_pos = 0;
 		skipDeviceCode = 0xFF;
 		while (buf_pos < inBufPosition - 1) {
@@ -390,7 +390,7 @@ void process_SAVE(int cmd) {
 		outDataAppend(0x00);
 		break;
 	}
-	case 0xFE: {
+	case 0xFE: { // ASCII file block (one line)
 		int buf_pos = 0;
 		if (inDataBuf[buf_pos] == 0x1A) {
 			debug_log("file done\n");
