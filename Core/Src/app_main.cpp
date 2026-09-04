@@ -21,7 +21,7 @@
 #define ACK_DELAY 20000
 #define ACK_TIMEOUT 1000 // In milliseconds for HAL
 #define DATA_WAIT 9000
-#define IN_DATAREADY_TIMEOUT 15000 // In us (Service Manual: ACK low >10ms and data out <50ms)
+#define IN_DATAREADY_TIMEOUT 50000
 #define OUT_NIBBLE_DELAY 500
 
 // Extern hardware handles auto-instantiated by STM32CubeMX
@@ -104,22 +104,6 @@ uint32_t read_us(void) {
     uint64_t us = dwtAccumCyc / cyclesPerUs;
     if (!primask) __enable_irq();
     return (uint32_t)us;
-}
-
-// BUSY (EXTI9_5) interrupt masking.
-// The reference MBed firmware reached SendOutputData() from a us-ticker
-// callback, i.e. from interrupt context, so the BUSY EXTI (same NVIC
-// priority) could never preempt the send loop. Here SendOutputData() runs in
-// thread mode, so we must mask the BUSY interrupt explicitly to get the same
-// uninterrupted, deterministic nibble timing.
-static inline void BUSY_IRQ_Disable(void) {
-    HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
-}
-
-static inline void BUSY_IRQ_Enable(void) {
-    __HAL_GPIO_EXTI_CLEAR_IT(in_BUSY_Pin);
-    HAL_NVIC_ClearPendingIRQ(EXTI9_5_IRQn);
-    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
 
 void ResetACK(void) {
@@ -249,8 +233,8 @@ void SendOutputData(void) {
 
     startCyc = DWT->CYCCNT;
 
-    // Mask BUSY interrupt during output data sending to ensure deterministic timing
-    BUSY_IRQ_Disable();
+    // Ignore BUSY callbacks during output, but keep EXTI enabled so no edge
+    // remains pending and is lost when the next receive phase starts.
     irq_BUSY_rise = NULL;
     irq_BUSY_fall = NULL;
 
@@ -351,8 +335,6 @@ void SendOutputData(void) {
 
     irq_BUSY_rise = NULL;
     irq_BUSY_fall = NULL;
-    BUSY_IRQ_Enable();
-
     uint32_t elapsedUs = us_since(startCyc);
     uint32_t nBytes = outDataGetPosition ? outDataGetPosition : 1;
     if (aborted) {
@@ -440,6 +422,12 @@ void inDataReady(void) {
                     // Re-attach triggers for skipping device code handshake
                     irq_BUSY_fall = &inNibbleAck;
                     irq_BUSY_rise = &inNibbleReady;
+
+                    // The first BUSY rising edge may have occurred while the
+                    // previous response was being released.
+                    if (HAL_GPIO_ReadPin(in_BUSY_GPIO_Port, in_BUSY_Pin) == GPIO_PIN_SET) {
+                        inNibbleReady();
+                    }
                 }
             } else {
                 ERR_PRINTOUT("Command processing error\n");

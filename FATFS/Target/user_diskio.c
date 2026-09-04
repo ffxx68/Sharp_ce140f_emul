@@ -233,6 +233,15 @@ static uint8_t SD_TxDataBlock(const BYTE *buff, BYTE token)
             debug_log("SD_Tx resp err 0x%02X\n", resp);
             return 0;
         }
+        // The data-response token only acknowledges reception.  The card
+        // remains busy while programming the sector.
+        if (!SD_WaitReady()) {
+            debug_log("SD_Tx busy timeout\n");
+            return 0;
+        }
+    } else if (!SD_WaitReady()) {
+        debug_log("SD_Tx stop busy timeout\n");
+        return 0;
     }
 
     return 1;
@@ -551,5 +560,3 @@ DRESULT USER_ioctl (
   /* USER CODE END IOCTL */
 }
 #endif /* _USE_IOCTL == 1 */
-
-

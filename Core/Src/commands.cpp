@@ -38,6 +38,15 @@ uint8_t FileName[32];
 int file_size;
 int file_pos = 0;
 
+static void closeStaticFile(void) {
+	if (!staticFileOpen)
+		return;
+	FRESULT syncResult = f_sync(&staticFile);
+	FRESULT closeResult = f_close(&staticFile);
+	debug_log("static file close: sync %d close %d\n", syncResult, closeResult);
+	staticFileOpen = false;
+}
+
 // Target tracking macros
 uint8_t sdmiso = 1; // Handled directly via FatFs f_mount checks
 FATFS FatFs;
@@ -343,11 +352,12 @@ void process_SAVE(int cmd) {
 	case 0x10: { // file name : create (or replace)
 		getFileName();
 		if (staticFileOpen) {
-			f_close(&staticFile);
-			staticFileOpen = false;
+			closeStaticFile();
 		}
-		if (f_open(&staticFile, (char*) FileName, FA_CREATE_ALWAYS | FA_WRITE)
-				!= FR_OK) {
+		FRESULT openResult = f_open(&staticFile, (char*) FileName,
+				FA_CREATE_ALWAYS | FA_WRITE);
+		if (openResult != FR_OK) {
+			debug_log("f_open write error %d\n", openResult);
 			ERR_PRINTOUT("f_open write error\n");
 			outDataAppend(0xFF);
 			break;
@@ -381,8 +391,7 @@ void process_SAVE(int cmd) {
 		}
 		if (file_pos == file_size) {
 			if (staticFileOpen) {
-				f_close(&staticFile);
-				staticFileOpen = false;
+				closeStaticFile();
 			}
 			debug_log("file done\n");
 			skipDeviceCode = 0x00;
@@ -395,8 +404,7 @@ void process_SAVE(int cmd) {
 		if (inDataBuf[buf_pos] == 0x1A) {
 			debug_log("file done\n");
 			if (staticFileOpen) {
-				f_close(&staticFile);
-				staticFileOpen = false;
+				closeStaticFile();
 			}
 		} else {
 			while (buf_pos < inBufPosition - 1) {
