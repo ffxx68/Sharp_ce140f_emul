@@ -2,6 +2,21 @@
 // Reverse engineering by contact@pockemul.com
 // Ported to bare-metal STM32Cube HAL (Nucleo-L432KC)
 
+
+/* TODO
+> make all
+...
+C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: build/Sharp_ce140f_emul_v1.1.elf section `.bss' will not fit in region `RAM'
+C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: region `RAM' overflowed by 4520 bytes
+C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: build/app_main.o: in function `check_serial_input()':
+C:\Users\F.Fumi\STM32CubeIDE\workspace_2.2.0\Sharp_ce140f_emul/Core/Src/app_main.cpp:767:(.text._Z18check_serial_inputv+0x92): undefined reference to `pintest_process_line'
+C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: C:\Users\F.Fumi\STM32CubeIDE\workspace_2.2.0\Sharp_ce140f_emul/Core/Src/app_main.cpp:766:(.text._Z18check_serial_inputv+0x9e): undefined reference to `pintest_is_active'
+C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: build/commands.o: in function `process_SET()':
+C:\Users\F.Fumi\STM32CubeIDE\workspace_2.2.0\Sharp_ce140f_emul/Core/Src/commands.cpp:1050:(.text._Z11process_SETv+0x2c): undefined reference to `f_chmod'
+collect2.exe: error: ld returned 1 exit status
+make: *** [Makefile:139: build/Sharp_ce140f_emul_v1.1.elf] Error 1
+*/
+
 #include "main.h"
 #include "commands.h"
 #include "pintest.h"
