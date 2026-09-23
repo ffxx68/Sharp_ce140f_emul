@@ -46,7 +46,7 @@ About power, the Sharp and the Nucleo do not share the 5v power line, just gnd. 
 
 **Important Note** - With the Nucleo L432KC, by default the PA_5 (A4) and PA_6 (A5) pins can only be used as Input floating (ADC function). SB16 and SB18 solder bridges (0-ohm resistors, actually) must be removed, in order to use these pins as Digital output and have access to other functions (DigitalOut, SPI, PWM, etc...). Refer to the Nucleo user manual, for more details.
 
-## Alternative haardware designs
+## Alternative hardware designs
 
 An important issue has arised, while testing the finished board on different Sharp PC models (which I didn't hit, while using it on my own PC), having to do with the level converter used in my design. The description and a complete story of its analysis can be found at: [Issue #4](https://github.com/ffxx68/Sharp_ce140f_emul/issues/4).
 
@@ -66,59 +66,72 @@ Yet an alternative design was also proposed by Pokoyama Danna:
 
 where a programmable device (Renesas SLG46826) was used instead. 
 
-Yet, another interesting interface is that by Wayne Venables [Sharp Manager](https://github.com/codaris/SharpManager), where not only the CE-140F, but also the CE-126P cassette and printer interface is emulated, on Arduino plus a Windows counterpart program.
+Yet, another interesting interface is that by Wayne Venables [Sharp Manager](https://github.com/codaris/SharpManager), where not only the CE-140F, 
+but also the CE-126P cassette and printer interface is emulated, on Arduino plus a Windows counterpart program.
 
-## Emulation software description
+## Emulator software description
 
-This emulator tries to reply as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC, like an actual CE-140F would. Unfortunately, the official CE-140F Service Manual doesn't go beyond the low-level hardware description, so some commands are still unimpleneted and also the implemented ones might face unexected behaviour. Several tests, by different users too, have validated the most common use cases, though. 
+The commands implemented are those from the [CE140F Operation Manual](CE140F_OPERATION_MANUAL_EN_DE_FR-compressed.pdf),
+except INIT, intentionally, being disk formatting not applicable here.
 
-With respect to the command exchange protocol, I've tried to summarize here what we know so far:
+The emulator tries to reply as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC, 
+like an actual CE-140F would. Unfortunately, the official [CE-140F Service Manual](CE140F_Service_manual.pdf) doesn't go beyond the low-level hardware description, 
+so some commands may still show some unexpected behaviour. 
+Several tests, by different users too, have validated the most common use cases, though.
+
+With respect to the communication protocol, I've tried to summarize here what we know so far:
 
 [Protocol](https://github.com/ffxx68/Sharp_ce140f_emul/blob/main/protocol.md)
 
-Being this a work in progress, I recommend using the latest source code as the actual reference, anyway.
-
 ## Software installation
 
-Pre-built binaores can be found on GitHub, at
+Pre-built binaries can be found in
 
 [Releases](https://github.com/ffxx68/Sharp_ce140f_emul/releases)
 
-at various stages in the software evloution, with version numbering suggesting the more recent one.
+at various stages in the software evolution, with version numbering suggesting the more recent one.
 
-To install a binary, dowload the .bin file on your PC and drag the file to the device shown as a virtual disk drive, when plugged in to a PC USB port.
-This applies to Windows OS. I can't tell exactly how to do it in Linux...
+To install a binary, download the .bin file on your PC and drag the file to the device shown as a virtual disk drive, when plugged in to a PC USB port.
+This applies to Windows OS. 
+
+Under Linux, the ST-Link mounts the board as a USB mass storage, e.g. `/Volumes/NODE_L432KC`, `/Volumes/NOD_L432KC`, `/Volumes/NUCLEO*`.
 
 ## Software build
 
-*NOTE* - The original version of the project (the one in 'main' branch) was developed using the Keil Sudio Cloud online tools, 
+*NOTE* - The original version of the project (the one in `main` branch) was developed using the Keil Studio Cloud online tools, 
 which has now reached its [end of life, since July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). 
-What is found under the 'CubeIDE' branch instead, contains the porting to the STM32CubeIDE framework.
-The release 'CubeIDE.1' has been built from this branch, and tested on DSKF, FILES, LOAD and SAVE commands only, so far.
+
+What is found under the `CubeIDE` branch instead, contains the porting to the [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) framework, 
+where one can build and flash the board using the IDE tools. This version includes several functional fixes and improvements, too!
+Alternatively, a `[Makefile](Makefile)` is provided too, to build and flash from command line, 
+assuming make and the Arm GNU Toolchain (`arm-none-eabi`) are available.
 
 ## Further Evolutions
 
-As noted, version v1 of the board needs to be powered through the board USB plug. Making the emulator entirely portable, battery powered, is the most sensible next step that gets to my mind. To this aim, I have started a second revision of the board design, aimed mainly at:
+As noted, version v1 of the board needs to be powered through the board USB plug. 
+Making the emulator entirely portable, battery powered, is the most sensible next step that gets to my mind. 
+To this aim, I have started a second revision of the board design, aimed mainly at:
 
 - USB-rechargable battery power
-- enclosure-ready form factor
+- and enclosure-ready PCB form factor
 - fixing Issue#4 (see above)
 
-A DRAFT verions of this v2 PCB is here: 
+A DRAFT version of this v2 PCB is here: 
 
 https://github.com/ffxx68/Sharp_ce140f_emul/tree/main/KiCad_v2
 
-but it's very far from the making, yet. Firmware would need to be revised too.
+but it's very far from the making, yet. 
+Firmware would need to be revised too.
 
 ## Acknowledgements
-Many have have contributed, with support and suggestions, to make this project what it is.
+Many have contributed to make this project what it is.
+Among them:
 
-First of all let me mention Remy, author of the [Pockemul](https://pockemul.com/) emulator, who originally reverse engineered the CE-140F protocol.
-
-Then [Walter](http://www.cavefischer.at/spc/index.htm), who helped on the hardware interface front.
-
-Then, the entire community of Sharp-PC enthusiasts.
-
-Then, the contributors to the v1 PCB-crowdfunding campaign, on Indiegogo.
+- [Pockemul](https://pockemul.com/) emulator's author, who first reverse engineered the CE-140F protocol
+- [Walter](http://www.cavefischer.at/spc/index.htm), who helped me on the hardware interface front
+- [POCKET GAMES](https://github.com/phoen1s/SHARP_G-850V_PC-E650/tree/main/DRIVER%20CE-104F%20), 
+for the tremendous work he's done to complete the command set, fixing bugs and optimizing the driver overall
+- The contributors to the PCB crowdfunding campaign, on Indiegogo.
+- The entire community of Sharp-PC enthusiasts.
 
 Thank you all.

@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fatfs.h"
+#include "sd_spi.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -93,6 +94,10 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
+  // SPI1 + CS for the SD card. Must run before the first f_mount(); kept in a
+  // USER CODE block so regenerating from the .ioc does not drop it.
+  SD_SPI_Init();
+
   // Link and hand over control to your custom C++ diskette emulator logic
   app_main();
 
@@ -125,10 +130,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
   RCC_OscInitStruct.PLL.PLLM = 1;
-  /* MSI 4 MHz / PLLM 1 * PLLN 40 = 160 MHz VCO, / PLLR 2 = 80 MHz SYSCLK.
-     80 MHz matches the reference MBed firmware; the previous PLLN=16 gave
-     only 32 MHz, making every ISR / handshake response 2.5x slower. */
-  RCC_OscInitStruct.PLL.PLLN = 40;
+  RCC_OscInitStruct.PLL.PLLN = 16;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
@@ -146,7 +148,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -247,15 +249,22 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(user_BTN_GPIO_Port, &GPIO_InitStruct);
 
-  /* EXTI interrupt Init */
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 2, 0);
+  /* EXTI interrupt Init.
+   *
+   * BUSY (PA9, EXTI9_5) carries the actual bit/nibble clock and must be able
+   * to pre-empt the others. startDeviceCodeSeq() runs inside the X_OUT handler
+   * and can sit there for up to 140 ms (waiting for D_OUT, then two ACK_DELAY
+   * pauses); at equal priority Cortex-M does not nest, so every BUSY pulse in
+   * that window was lost - only one edge stays pending in hardware. That is the
+   * "Device" with no "Device ID" in the logs. */
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 2, 0);   /* BUSY - same as X_OUT, as Mbed */
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 2, 0);     /* X_OUT */
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 3, 0);     /* user button */
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 2, 0);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
 
 /* USER CODE BEGIN 4 */
