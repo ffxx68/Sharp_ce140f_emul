@@ -51,7 +51,8 @@ Middlewares/Third_Party/FatFs/src/option/syscall.c
 CPP_SOURCES = \
 Core/Src/app_main.cpp \
 Core/Src/commands.cpp \
-Core/Src/main.cpp
+Core/Src/main.cpp \
+Core/Src/pintest.cpp
 
 ASM_SOURCES = Core/Startup/startup_stm32l432kcux.s
 

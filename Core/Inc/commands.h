@@ -6,14 +6,14 @@
 /* Placed in SRAM2 (see the .sram2 section in the linker script): SRAM1 is only
  * 48 KB and outDataBuf alone takes 38 KB of it. Nothing here may rely on being
  * zero at reset - the startup code does not clear this section. */
-#define SRAM2_DATA __attribute__((section(".sram2")))
+#define SRAM2_DATA __attribute__((section(".ram2")))
 
 /* Max file size during LOAD: the whole file is staged here before being sent.
  * Must stay at 40000 - the Mbed value. The CubeIDE port dropped it to 38000,
  * which brings back issue #6: a file over ~38 KB is silently truncated (we
  * report "file complete", the Sharp is still waiting for the rest) and the
  * machine hangs until BREAK. */
-#define OUT_BUF_SIZE 40000
+#define OUT_BUF_SIZE 10000
 #define IN_BUF_SIZE 2000
 #define MAX_N_FILES 6
 
