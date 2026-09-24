@@ -72,7 +72,24 @@ but also the CE-126P cassette and printer interface is emulated, on Arduino plus
 ## Emulator software description
 
 The commands implemented are those from the [CE140F Operation Manual](CE140F_OPERATION_MANUAL_EN_DE_FR-compressed.pdf),
-except INIT, intentionally, being disk formatting not applicable here.
+
+| Command                                | Description                                                                                  |
+|----------------------------------------|----------------------------------------------------------------------------------------------|
+| `LOAD`                                 | ✅ Load a BASIC program to PC memory                                                          |
+| `SAVE`                                 | ✅ Save a BASIC program in tokenized, binary format                                           |
+| `SAVE ,A`                              | ✅ Save a BASIC program in plain ASCII format                                                 |
+| `FILES`                                | ✅ List files, including wildcards (e.g. `FILES"X:C*.BAS"`), and navigation using ↑ ↓ SHIFT+↓ |
+| `KILL`                                 | ✅ Delete a file                                                                              |
+| `OPEN` / `CLOSE` / `PRINT#` / `INPUT#` | ✅ BASIC statements to handle data files                                                      |
+| `DSKF`                                 | ✅ `DSKF 1` returns free Mbytes; `DSKF 2` returns a test dummy value of 65535                 |
+| `CHAIN` / `MERGE`                      | ✅ Load and execute a program, with / without deleting the program in PC memory               |
+| `EOF`                                  | ✅ BASIC statement to check for end-of-file                                                   |
+| `NAME`                                 | ✅ Rename a file                                                                              |
+| `SET`                                  | ✅ Set a password to a file                                                                   |
+| `COPY`                                 | ✅ Copy a file to a different name (drive letters X:, Y: ignored)                             |
+| `LFILES`                               | ✅ List files and attributes to serial printer                                                |
+| `LOC` / `LOF`                          | ✅ BASIC statements to get the current position and length of a file                          |
+| `INIT`                                 | ❌ Intentionally not implemented (disk formatting)                                            |
 
 The emulator tries to reply as closely as possible (given the knowledge we have at present of the protocol) to the commands issues by the Sharp-PC, 
 like an actual CE-140F would. Unfortunately, the official [CE-140F Service Manual](CE140F_Service_manual.pdf) doesn't go beyond the low-level hardware description, 
