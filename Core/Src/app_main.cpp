@@ -393,7 +393,7 @@ void SendOutputData(void) {
         startWait = HAL_GetTick();
         while ((in_BUSY_GPIO_Port->IDR & in_BUSY_Pin) != 0) {
             service_ack_watchdog();
-    loadWatchdogService();
+            loadWatchdogService();
             if ((HAL_GetTick() - startWait) > SEND_TIMEOUT_MS) {
                 timedout1 = true;
                 break;

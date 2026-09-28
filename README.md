@@ -115,13 +115,14 @@ Under Linux, the ST-Link mounts the board as a USB mass storage, e.g. `/Volumes/
 
 ## Software build
 
-*NOTE* - The original version of the project (the one in `main` branch) was developed using the Keil Studio Cloud online tools, 
-which has now reached its [end of life, since July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644). 
+The [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) framework 
+can be used to build and flash the code found in the `main` branch here, using the included IDE tools. 
 
-What is found under the `CubeIDE` branch instead, contains the porting to the [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) framework, 
-where one can build and flash the board using the IDE tools. This version includes several functional fixes and improvements, too!
-Alternatively, a `[Makefile](Makefile)` is provided too, to build and flash from command line, 
-assuming make and the Arm GNU Toolchain (`arm-none-eabi`) are available.
+Alternatively, a `[Makefile](Makefile)` is provided too, to build and flash from a command line, 
+assuming `make` and the Arm GNU Toolchain are available (`arm-none-eabi`, included with the STM32CubeIDE installation).
+
+*NOTE* - The original version of the project (now found in the `legacyMbed` branch) was developed using the Keil Studio Cloud online tools,
+which has now reached its [end of life, since July 2026](https://forums.mbed.com/t/important-update-on-mbed-end-of-life/23644).
 
 ## Further Evolutions
 
@@ -130,7 +131,7 @@ Making the emulator entirely portable, battery powered, is the most sensible nex
 To this aim, I have started a second revision of the board design, aimed mainly at:
 
 - USB-rechargable battery power
-- and enclosure-ready PCB form factor
+- an enclosure-ready PCB form factor
 - fixing Issue#4 (see above)
 
 A DRAFT version of this v2 PCB is here: 
