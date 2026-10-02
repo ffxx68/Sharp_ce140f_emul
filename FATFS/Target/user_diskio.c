@@ -16,8 +16,10 @@
   ******************************************************************************
   */
  /* USER CODE END Header */
-
-#ifdef USE_OBSOLETE_USER_CODE_SECTION_0
+ 
+ #ifndef SHARP_CUSTOM_USER_DISKIO
+ 
+ #ifdef USE_OBSOLETE_USER_CODE_SECTION_0
 /*
  * Warning: the user section 0 is no more in use (starting from CubeMx version 4.16.0)
  * To be suppressed in the future.
@@ -560,3 +562,5 @@ DRESULT USER_ioctl (
   /* USER CODE END IOCTL */
 }
 #endif /* _USE_IOCTL == 1 */
+
+#endif /* !SHARP_CUSTOM_USER_DISKIO */

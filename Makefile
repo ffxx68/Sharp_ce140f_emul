@@ -18,6 +18,7 @@ Core/Src/stm32l4xx_hal_msp.c \
 Core/Src/stm32l4xx_hal_timebase_tim.c \
 Core/Src/stm32l4xx_it.c \
 Core/Src/sd_spi.c \
+Core/Src/user_diskio.c \
 Core/Src/syscalls.c \
 Core/Src/sysmem.c \
 Core/Src/system_stm32l4xx.c \
@@ -42,7 +43,6 @@ Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c \
 FATFS/App/fatfs.c \
-FATFS/Target/user_diskio.c \
 Middlewares/Third_Party/FatFs/src/diskio.c \
 Middlewares/Third_Party/FatFs/src/ff.c \
 Middlewares/Third_Party/FatFs/src/ff_gen_drv.c \
@@ -84,7 +84,7 @@ FPU = -mfpu=fpv4-sp-d16
 FLOAT-ABI = -mfloat-abi=hard
 MCU = $(CPU) -mthumb $(FPU) $(FLOAT-ABI)
 
-C_DEFS = -DUSE_NUCLEO_32 -DUSE_HAL_DRIVER -DSTM32L432xx
+C_DEFS = -DUSE_NUCLEO_32 -DUSE_HAL_DRIVER -DSTM32L432xx -DSHARP_CUSTOM_USER_DISKIO
 
 C_INCLUDES = \
 -ICore/Inc \
