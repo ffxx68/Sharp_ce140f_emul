@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <cstdint>
+#include <cctype>
 
 extern void debug_log(const char *fmt, ...);
 extern void debug_hex(volatile uint8_t *buf, volatile uint16_t len);
@@ -133,32 +134,70 @@ static uint8_t filePattern[12] = {
     '?','?','?','?','?','?','?','?', '.', '?','?','?'
 };
 
-static bool name_matches_pattern(const char *fname) {
-    char n83[11];
-    memset(n83, ' ', sizeof(n83));
+static void trim_trailing_spaces(char *s) {
+    size_t len = strlen(s);
+    while (len > 0 && s[len - 1] == ' ') {
+        s[--len] = '\0';
+    }
+}
 
+static bool wildcard_match_83(const char *pattern, const char *text) {
+    if (*pattern == '\0') {
+        return *text == '\0';
+    }
+
+    if (*pattern == '*') {
+        return wildcard_match_83(pattern + 1, text) ||
+               (*text != '\0' && wildcard_match_83(pattern, text + 1));
+    }
+
+    if (*pattern == '?') {
+        return *text != '\0' && wildcard_match_83(pattern + 1, text + 1);
+    }
+
+    if (*text != '\0' &&
+        std::toupper((unsigned char)*pattern) == std::toupper((unsigned char)*text)) {
+        return wildcard_match_83(pattern + 1, text + 1);
+    }
+
+    return false;
+}
+
+static bool name_matches_pattern(const char *fname) {
+    char nname[9];
+    char next[4];
+    char pname[9];
+    char pext[4];
     const char *dot = strchr(fname, '.');
+
+    memset(nname, 0, sizeof(nname));
+    memset(next, 0, sizeof(next));
+    memset(pname, 0, sizeof(pname));
+    memset(pext, 0, sizeof(pext));
+
     size_t nlen = dot ? (size_t)(dot - fname) : strlen(fname);
     if (nlen > 8) nlen = 8;
-    memcpy(n83, fname, nlen);
+    memcpy(nname, fname, nlen);
+    trim_trailing_spaces(nname);
 
     if (dot) {
         size_t elen = strlen(dot + 1);
         if (elen > 3) elen = 3;
-        memcpy(n83 + 8, dot + 1, elen);
+        memcpy(next, dot + 1, elen);
     }
+    trim_trailing_spaces(next);
 
-	/* Only '?' is a wild card. A space is a literal: the Sharp pads short
-	 * patterns with them, so "??????\x20\x20.BAS" means a name of six
-	 * characters or fewer - the 8.3 entry is space-padded too and matches
-	 * position by position. */
-	for (int i = 0; i < 8; i++) {
-		if (filePattern[i] != '?' && filePattern[i] != n83[i]) return false;
-	}
-	for (int i = 0; i < 3; i++) {
-		if (filePattern[9 + i] != '?' && filePattern[9 + i] != n83[8 + i]) return false;
-	}
-    return true;
+    memcpy(pname, filePattern, 8);
+    pname[8] = '\0';
+    trim_trailing_spaces(pname);
+
+    memcpy(pext, filePattern + 9, 3);
+    pext[3] = '\0';
+    trim_trailing_spaces(pext);
+
+    /* '*' and '?' are wildcards, but basic 8.3 names are space-padded. Trimming
+     * the padded blanks keeps the pattern aligned with the actual FAT name. */
+    return wildcard_match_83(pname, nname) && wildcard_match_83(pext, next);
 }
 
 static bool file_is_listable(const FILINFO *fno) {
