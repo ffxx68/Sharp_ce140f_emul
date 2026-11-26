@@ -75,9 +75,11 @@ The commands implemented are those from the [CE140F Operation Manual](CE140F_OPE
 
 | Command                                | Description                                                                                  |
 |----------------------------------------|----------------------------------------------------------------------------------------------|
-| `LOAD`                                 | ✅ Load a BASIC program to PC memory                                                          |
 | `SAVE`                                 | ✅ Save a BASIC program in tokenized, binary format                                           |
 | `SAVE ,A`                              | ✅ Save a BASIC program in plain ASCII format                                                 |
+| `LOAD`                                 | ✅ Load a BASIC program to PC memory                                                          |
+| `SAVE M`                               | ✅ Save a memory block to a file (Sharp undocumented; see also [mem_dump_files.md])                                                             |
+| `LOAD M`                               | ✅ Load a memory block from a file (Sharp undocumented; see also [mem_dump_files.md])                                                          |
 | `FILES`                                | ✅ List files, including wildcards (e.g. `FILES"X:C*.BAS"`), and navigation using ↑ ↓ SHIFT+↓ |
 | `KILL`                                 | ✅ Delete a file                                                                              |
 | `OPEN` / `CLOSE` / `PRINT#` / `INPUT#` | ✅ BASIC statements to handle data files                                                      |
